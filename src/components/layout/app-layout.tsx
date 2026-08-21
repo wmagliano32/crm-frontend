@@ -12,8 +12,8 @@ export function AppLayout() {
   const { user, logout } = useAuth()
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <div className="flex h-dvh flex-col bg-background">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background px-4 py-3">
         <span className="text-sm font-semibold tracking-tight">WAM CRM</span>
         {user && (
           <div className="flex items-center gap-2">
@@ -27,7 +27,9 @@ export function AppLayout() {
           </div>
         )}
       </header>
-      <main className="flex flex-1 flex-col px-4 py-4">
+      {/* Sin padding acá a propósito: la bandeja (y el hilo, en la 2.2) usan
+          el ancho y alto completos, cada una maneja su propio espaciado interno. */}
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <Outlet />
       </main>
     </div>
