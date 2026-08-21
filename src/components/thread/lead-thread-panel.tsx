@@ -1,6 +1,6 @@
 import { ArrowLeft, ChevronUp, Loader2 } from "lucide-react"
 import { useEffect, useMemo, useRef } from "react"
-import { ThreadMessageBubble } from "@/components/thread/thread-message-bubble"
+import { ThreadMessageRun } from "@/components/thread/thread-message-bubble"
 import { ThreadSeparator } from "@/components/thread/thread-separator"
 import { ThreadEmpty, ThreadError, ThreadSkeleton } from "@/components/thread/thread-states"
 import { Button } from "@/components/ui/button"
@@ -8,47 +8,78 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useLeadThread } from "@/hooks/use-lead-thread"
 import { useLead } from "@/hooks/use-leads"
 import { displayNameFor, initialsFor, stageColorClass } from "@/lib/lead-format"
-import { formatDaySeparator, formatReengagementLabel, isSameCalendarDay } from "@/lib/thread-format"
+import { formatDaySeparator, formatReengagementLabel, isHumanOutbound, isSameCalendarDay } from "@/lib/thread-format"
 import type { ThreadMessage } from "@/lib/types"
 
 type ThreadItem =
   | { type: "separator"; key: string; label: string; muted: boolean }
-  | { type: "message"; key: string; message: ThreadMessage }
+  | { type: "run"; key: string; messages: ThreadMessage[] }
 
-// Arma la lista intercalando separadores: uno de fecha en cambios de día
-// dentro de la MISMA conversación, y uno de "reenganche" (con la fecha ya
-// incluida) en cada cambio de conversación — así no se duplican los dos
-// separadores uno arriba del otro en el corte. Si la conversación a la que
-// se entra está eliminada, el separador de esa entrada se marca "muted" y
-// suma la aclaración.
+// Identidad del emisor para agrupar en una "tanda": IN, bot y humano son
+// tres emisores distintos aunque los dos últimos compartan direction=OUT.
+function senderKeyFor(message: ThreadMessage): string {
+  if (message.direction === "IN") return "IN"
+  return isHumanOutbound(message) ? "OUT_HUMAN" : "OUT_BOT"
+}
+
+// Arma la lista intercalando separadores y agrupando en tandas (Fase 2.2,
+// ajuste tras ver datos reales: separar CADA mensaje dejaba huecos
+// verticales grandes, sobre todo por la etiqueta "Bot" en línea propia).
+// Separador de fecha en cambios de día dentro de la MISMA conversación, y
+// de "reenganche" (con la fecha ya incluida) en cada cambio de
+// conversación — así no se duplican los dos uno arriba del otro. Un
+// separador SIEMPRE corta la tanda en curso, aunque el emisor no haya
+// cambiado: agrupar mensajes de días o conversaciones distintas bajo una
+// sola hora no tendría sentido. Si la conversación a la que se entra está
+// eliminada, el separador de esa entrada se marca "muted" y suma la
+// aclaración.
 function buildThreadItems(messagesAsc: ThreadMessage[]): ThreadItem[] {
   const items: ThreadItem[] = []
   let prev: ThreadMessage | null = null
+  let currentRun: ThreadMessage[] | null = null
+
+  function flushRun() {
+    if (!currentRun) return
+    items.push({ type: "run", key: `run-${currentRun[0].id}`, messages: currentRun })
+    currentRun = null
+  }
 
   for (const msg of messagesAsc) {
     const conversationChanged = prev !== null && msg.conversation !== prev.conversation
     const enteringDeleted = msg.conversacion_eliminada && (prev === null || prev.conversation !== msg.conversation)
     const deletedSuffix = enteringDeleted ? " · conversación eliminada" : ""
+    const dayChanged = prev === null || !isSameCalendarDay(prev.created_at, msg.created_at)
+    const needsSeparator = conversationChanged || dayChanged
 
-    if (conversationChanged) {
-      const gapMs = new Date(msg.created_at).getTime() - new Date(prev!.created_at).getTime()
-      items.push({
-        type: "separator",
-        key: `sep-${msg.id}`,
-        label: `${formatReengagementLabel(gapMs, msg.created_at)}${deletedSuffix}`,
-        muted: enteringDeleted,
-      })
-    } else if (prev === null || !isSameCalendarDay(prev.created_at, msg.created_at)) {
-      items.push({
-        type: "separator",
-        key: `sep-${msg.id}`,
-        label: `${formatDaySeparator(msg.created_at)}${deletedSuffix}`,
-        muted: enteringDeleted,
-      })
+    if (needsSeparator) {
+      flushRun()
+      if (conversationChanged) {
+        const gapMs = new Date(msg.created_at).getTime() - new Date(prev!.created_at).getTime()
+        items.push({
+          type: "separator",
+          key: `sep-${msg.id}`,
+          label: `${formatReengagementLabel(gapMs, msg.created_at)}${deletedSuffix}`,
+          muted: enteringDeleted,
+        })
+      } else {
+        items.push({
+          type: "separator",
+          key: `sep-${msg.id}`,
+          label: `${formatDaySeparator(msg.created_at)}${deletedSuffix}`,
+          muted: enteringDeleted,
+        })
+      }
     }
-    items.push({ type: "message", key: `msg-${msg.id}`, message: msg })
+
+    if (!needsSeparator && currentRun && senderKeyFor(currentRun[0]) === senderKeyFor(msg)) {
+      currentRun.push(msg)
+    } else {
+      flushRun()
+      currentRun = [msg]
+    }
     prev = msg
   }
+  flushRun()
   return items
 }
 
@@ -141,12 +172,12 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
               </Button>
             </div>
           )}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
             {items.map((item) =>
               item.type === "separator" ? (
                 <ThreadSeparator key={item.key} label={item.label} muted={item.muted} />
               ) : (
-                <ThreadMessageBubble key={item.key} message={item.message} />
+                <ThreadMessageRun key={item.key} messages={item.messages} />
               )
             )}
           </div>
