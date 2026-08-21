@@ -63,11 +63,38 @@ npm run preview
 
 ### Deploy al VPS
 
-El build (`dist/`) es estático — se copia tal cual a
-`~/mi_proyecto/react/crm/build` en el VPS (nginx ya configurado para
-servirlo en `crm.wamsoluciones.com.ar`, con DNS/SSL/CORS ya verificados
-contra `api.wamsoluciones.com.ar`). No hay build step en el servidor: se
-generá el `dist/` local y se sube ese contenido.
+El build (`dist/`) es estático — no hay build step en el servidor. Se
+genera local y se sube tal cual a `~/mi_proyecto/react/crm/build` en el
+VPS (nginx ya configurado para servirlo en `crm.wamsoluciones.com.ar`,
+con DNS/SSL/CORS ya verificados contra `api.wamsoluciones.com.ar`).
+
+```bash
+scripts/deploy.sh
+```
+
+El script (`scripts/deploy.sh`):
+
+1. Corre `npm run build` — si el build falla, el script aborta ahí mismo
+   (`set -e`), nunca sube nada roto ni a medio hacer.
+2. Sube `dist/` por `rsync` a un directorio temporal
+   (`~/mi_proyecto/react/crm/build.new`) — el sitio en producción no se
+   toca todavía en este paso.
+3. Hace el swap de forma atómica en el servidor: `build` → `build.old`,
+   `build.new` → `build`. En ningún momento el sitio queda con un árbol de
+   archivos a medio copiar.
+4. Borra `build.old` y muestra la URL final.
+
+Antes de la primera vez, completar el usuario/host reales del VPS al
+principio del script (`REMOTE_USER`, `REMOTE_HOST`, `REMOTE_PORT` si no es
+el 22) — o exportarlos como variables de entorno antes de correrlo, por
+ejemplo:
+
+```bash
+REMOTE_USER=walter REMOTE_HOST=1.2.3.4 scripts/deploy.sh
+```
+
+Requiere acceso SSH por clave al VPS (sin prompt de contraseña) para que
+`rsync`/`ssh` corran sin intervención manual.
 
 ## Estructura
 
