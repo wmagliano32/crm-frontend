@@ -1,14 +1,17 @@
 import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 import { LeadListSkeleton } from "@/components/leads/lead-list-skeleton"
 import { LeadListEmpty, LeadListError } from "@/components/leads/lead-list-states"
 import { LeadRow } from "@/components/leads/lead-row"
 import { LeadsTabs, type LeadsTabKey } from "@/components/leads/leads-tabs"
+import { LeadThreadPanel } from "@/components/thread/lead-thread-panel"
 import { Input } from "@/components/ui/input"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useAllScopeLeads, useDefaultScopeLeads } from "@/hooks/use-leads"
 import { useAuth } from "@/lib/auth-context"
 import type { Lead } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
 // "Pendientes" (Fase 2.1, criterio revisado): leads vivos que nadie tomó,
 // no el criterio original de "último mensaje entrante" — el bot responde
@@ -31,6 +34,9 @@ function byOldestLastInboundFirst(a: Lead, b: Lead): number {
 
 export function BandejaPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
+  const { leadId } = useParams<{ leadId: string }>()
+  const selectedLeadId = leadId ? Number(leadId) : null
   const [tab, setTab] = useState<LeadsTabKey>("pendientes")
   const [query, setQuery] = useState("")
   const debouncedQuery = useDebouncedValue(query, 300)
@@ -59,9 +65,20 @@ export function BandejaPage() {
     todos: allScope.data ? allScope.data.count : undefined,
   }
 
+  const hasSelection = selectedLeadId !== null
+
   return (
     <div className="flex h-full min-h-0 w-full">
-      <div className="flex h-full min-h-0 w-full flex-col md:w-[340px] md:shrink-0 md:border-r md:border-border">
+      {/* Escritorio: lista + hilo lado a lado, siempre las dos. Celular:
+          pilas, no columnas — con un lead seleccionado el hilo reemplaza
+          la lista a pantalla completa (se oculta con "hidden", no se
+          desmonta la lista para no perder su scroll/estado al volver). */}
+      <div
+        className={cn(
+          "flex h-full min-h-0 w-full flex-col md:w-[340px] md:shrink-0 md:border-r md:border-border md:flex",
+          hasSelection && "hidden"
+        )}
+      >
         <div className="shrink-0 border-b border-border p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -86,13 +103,27 @@ export function BandejaPage() {
           ) : rows.length === 0 ? (
             <LeadListEmpty message={emptyMessageFor(tab, Boolean(debouncedQuery))} />
           ) : (
-            rows.map((lead) => <LeadRow key={lead.id} lead={lead} />)
+            rows.map((lead) => (
+              <LeadRow
+                key={lead.id}
+                lead={lead}
+                isSelected={lead.id === selectedLeadId}
+                onClick={() => navigate(`/bandeja/${lead.id}`)}
+              />
+            ))
           )}
         </div>
       </div>
 
-      {/* Reservado para el hilo de mensajes (Fase 2.2). */}
-      <div className="hidden flex-1 md:block" />
+      <div className={cn("h-full min-h-0 flex-1", !hasSelection && "hidden md:block")}>
+        {selectedLeadId !== null ? (
+          <LeadThreadPanel leadId={selectedLeadId} onBack={() => navigate("/")} />
+        ) : (
+          <div className="hidden h-full items-center justify-center text-sm text-muted-foreground md:flex">
+            Elegí una conversación para ver el hilo.
+          </div>
+        )}
+      </div>
     </div>
   )
 }

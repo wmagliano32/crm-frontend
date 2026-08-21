@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { fetchLeads } from "@/lib/leads-api"
+import { fetchLead, fetchLeads } from "@/lib/leads-api"
 
 // Dos queries en paralelo, siempre activas: la bandeja "por defecto" (sin
 // scope — activas sin archivar) alimenta las tabs Pendientes/Míos, que se
@@ -20,6 +20,18 @@ export function useAllScopeLeads(q: string) {
   return useQuery({
     queryKey: ["leads", "all", q],
     queryFn: () => fetchLeads({ scope: "all", q: q || undefined }),
+    staleTime: 30_000,
+  })
+}
+
+// Fase 2.2: el hilo necesita los datos del lead (nombre, teléfono, stage)
+// incluso al entrar directo por /bandeja/:leadId (recarga de página), sin
+// depender de que la lista ya esté cargada en memoria.
+export function useLead(leadId: number | null) {
+  return useQuery({
+    queryKey: ["lead", leadId],
+    queryFn: () => fetchLead(leadId as number),
+    enabled: leadId !== null,
     staleTime: 30_000,
   })
 }

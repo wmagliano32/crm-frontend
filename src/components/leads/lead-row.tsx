@@ -2,8 +2,9 @@ import { UserRoundX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ageColorClass, displayNameFor, etiquetaLabel, formatRelativeTime, initialsFor, stageColorClass } from "@/lib/lead-format"
 import type { Lead } from "@/lib/types"
+import { cn } from "@/lib/utils"
 
-export function LeadRow({ lead }: { lead: Lead }) {
+export function LeadRow({ lead, isSelected, onClick }: { lead: Lead; isSelected?: boolean; onClick?: () => void }) {
   const name = displayNameFor(lead)
   const isPending = lead.last_message_direction === "IN"
   // Defensivo: si el backend desplegado todavía no tiene el fix del
@@ -11,7 +12,14 @@ export function LeadRow({ lead }: { lead: Lead }) {
   const etiquetas = lead.etiquetas_seguimiento ?? []
 
   return (
-    <div className="flex w-full items-start gap-3 border-b border-border px-3 py-3 text-left">
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-start gap-3 border-b border-border px-3 py-3 text-left hover:bg-muted/60",
+        isSelected && "bg-muted"
+      )}
+    >
       <div className="relative shrink-0">
         <div
           className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-semibold text-white ${stageColorClass(lead.stage)}`}
@@ -73,6 +81,6 @@ export function LeadRow({ lead }: { lead: Lead }) {
           </div>
         )}
       </div>
-    </div>
+    </button>
   )
 }

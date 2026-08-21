@@ -79,3 +79,51 @@ export interface PaginatedResponse<T> {
   previous: string | null
   results: T[]
 }
+
+export type MessageDirection = "IN" | "OUT"
+export type DeliveryStatus = "" | "queued" | "sent" | "delivered" | "read" | "failed"
+
+export interface MessageAttachment {
+  id: number
+  file_name: string
+  content_type: string
+  size_bytes: number
+  created_at: string
+  download_url: string
+}
+
+// GET /api/sales/leads/{id}/messages/ (Fase 2.2, Paso 0 aprobado — opción
+// B). Mismo shape que el Message del backend, más conversation (para
+// dibujar los separadores de reenganche entre conversaciones del mismo
+// lead) y conversacion_eliminada (la conversación de origen tiene
+// is_deleted=True — decisión explícita de incluirla igual, atenuada, en
+// vez de dejar un agujero invisible en la charla).
+export interface ThreadMessage {
+  id: number
+  conversation: number
+  direction: MessageDirection
+  text: string
+  provider: string
+  provider_message_id: string
+  delivery_status: DeliveryStatus
+  sent_at: string | null
+  delivered_at: string | null
+  read_at: string | null
+  failed_at: string | null
+  error_code: string
+  error_message: string
+  // Sin tipo cerrado a propósito: es donde vive la convención
+  // payload.source === "inbox" que distingue humano de bot (ver
+  // lib/thread-format.ts isHumanOutbound), no un contrato documentado del
+  // backend.
+  payload: Record<string, unknown>
+  attachments: MessageAttachment[]
+  created_at: string
+  conversacion_eliminada: boolean
+}
+
+export interface MessageThreadPage {
+  results: ThreadMessage[]
+  next_cursor: string | null
+  has_more: boolean
+}

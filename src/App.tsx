@@ -26,6 +26,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route path="/" element={<BandejaPage />} />
+                <Route path="/bandeja/:leadId" element={<BandejaPage />} />
               </Route>
             </Route>
           </Routes>

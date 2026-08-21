@@ -15,3 +15,7 @@ export function fetchLeads(params: FetchLeadsParams = {}): Promise<PaginatedResp
   const qs = search.toString()
   return apiFetch<PaginatedResponse<Lead>>(`/api/sales/leads/${qs ? `?${qs}` : ""}`)
 }
+
+export function fetchLead(id: number): Promise<Lead> {
+  return apiFetch<Lead>(`/api/sales/leads/${id}/`)
+}
