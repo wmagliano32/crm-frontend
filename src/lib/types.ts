@@ -61,6 +61,10 @@ export interface Lead {
   created_at: string
   updated_at: string
   last_message_text: string | null
+  // Texto del último mensaje puntualmente ENTRANTE (lo que dijo el lead),
+  // distinto de last_message_text (que casi siempre es la respuesta del
+  // bot). null si el lead nunca escribió.
+  last_inbound_text: string | null
   last_message_direction: "IN" | "OUT" | null
   last_message_at: string | null
   current_conversation_id: number | null

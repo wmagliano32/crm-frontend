@@ -18,9 +18,14 @@ function isPendiente(lead: Lead): boolean {
   return lead.assigned_to_id === null && lead.stage !== "CLOSED" && lead.stage !== "OPTED_OUT"
 }
 
-function byOldestLastMessageFirst(a: Lead, b: Lead): number {
-  const at = a.last_message_at ? new Date(a.last_message_at).getTime() : Number.POSITIVE_INFINITY
-  const bt = b.last_message_at ? new Date(b.last_message_at).getTime() : Number.POSITIVE_INFINITY
+// Mismo campo que ahora se muestra y colorea en cada fila (last_inbound_at):
+// si se ordenara por otra cosa, los rojos no quedarían arriba de verdad. Un
+// lead que nunca escribió (last_inbound_at null) se trata como el caso más
+// frío posible — el bot le habló y no hay ni una respuesta — así que va
+// primero, antes que cualquier fecha real por vieja que sea.
+function byOldestLastInboundFirst(a: Lead, b: Lead): number {
+  const at = a.last_inbound_at ? new Date(a.last_inbound_at).getTime() : Number.NEGATIVE_INFINITY
+  const bt = b.last_inbound_at ? new Date(b.last_inbound_at).getTime() : Number.NEGATIVE_INFINITY
   return at - bt
 }
 
@@ -37,7 +42,7 @@ export function BandejaPage() {
   const allLeads = allScope.data?.results ?? []
 
   const pendientes = useMemo(
-    () => defaultLeads.filter(isPendiente).sort(byOldestLastMessageFirst),
+    () => defaultLeads.filter(isPendiente).sort(byOldestLastInboundFirst),
     [defaultLeads]
   )
   const mios = useMemo(

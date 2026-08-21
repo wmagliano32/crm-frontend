@@ -30,12 +30,20 @@ export function LeadRow({ lead }: { lead: Lead }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <p className="truncate text-sm font-medium">{name}</p>
-          <span className={`shrink-0 text-xs ${ageColorClass(lead.last_message_at)}`}>
-            {formatRelativeTime(lead.last_message_at)}
+          {/* Antigüedad medida desde el último mensaje DEL LEAD
+              (last_inbound_at), no desde el último mensaje cualquiera: si el
+              bot le escribió hace 3 días pero el lead no habla hace 4 meses,
+              lo que importa son los 4 meses. */}
+          <span className={`shrink-0 text-xs ${ageColorClass(lead.last_inbound_at)}`}>
+            {formatRelativeTime(lead.last_inbound_at)}
           </span>
         </div>
 
-        <p className="truncate text-sm text-muted-foreground">{lead.last_message_text || "Sin mensajes"}</p>
+        {lead.last_inbound_text ? (
+          <p className="truncate text-sm text-muted-foreground">{lead.last_inbound_text}</p>
+        ) : (
+          <p className="truncate text-sm italic text-muted-foreground/60">Sin respuesta del lead</p>
+        )}
 
         {etiquetas.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
