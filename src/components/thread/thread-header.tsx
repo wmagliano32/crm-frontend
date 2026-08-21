@@ -74,7 +74,9 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
           variant={fichaOpen ? "secondary" : "ghost"}
           size="icon"
           className="shrink-0"
-          onClick={() => navigate(fichaOpen ? `/bandeja/${leadId}` : `/bandeja/${leadId}/ficha`)}
+          onClick={() =>
+            navigate(fichaOpen ? `/bandeja/${leadId}${location.search}` : `/bandeja/${leadId}/ficha${location.search}`)
+          }
           aria-label="Ver ficha del lead"
           aria-pressed={fichaOpen}
         >

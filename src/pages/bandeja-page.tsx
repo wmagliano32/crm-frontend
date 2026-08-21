@@ -172,7 +172,7 @@ export function BandejaPage() {
                 key={lead.id}
                 lead={lead}
                 isSelected={lead.id === selectedLeadId}
-                onClick={() => navigate(`/bandeja/${lead.id}`)}
+                onClick={() => navigate(`/bandeja/${lead.id}${location.search}`)}
               />
             ))
           )}
@@ -184,7 +184,7 @@ export function BandejaPage() {
           // key=leadId: fuerza remount al cambiar de lead — resetea de
           // una el scroll del hilo y los mensajes "enviando"/con error en
           // curso, en vez de tener que limpiarlos a mano.
-          <LeadThreadPanel key={selectedLeadId} leadId={selectedLeadId} onBack={() => navigate("/")} />
+          <LeadThreadPanel key={selectedLeadId} leadId={selectedLeadId} onBack={() => navigate(`/${location.search}`)} />
         ) : (
           <div className="hidden h-full items-center justify-center text-sm text-muted-foreground md:flex">
             Elegí una conversación para ver el hilo.
@@ -194,7 +194,11 @@ export function BandejaPage() {
 
       {selectedLeadId !== null && fichaOpen && (
         <div className="h-full min-h-0 w-full md:w-[340px] md:shrink-0 md:border-l md:border-border">
-          <LeadFichaPanel key={selectedLeadId} leadId={selectedLeadId} onClose={() => navigate(`/bandeja/${selectedLeadId}`)} />
+          <LeadFichaPanel
+            key={selectedLeadId}
+            leadId={selectedLeadId}
+            onClose={() => navigate(`/bandeja/${selectedLeadId}${location.search}`)}
+          />
         </div>
       )}
     </div>
