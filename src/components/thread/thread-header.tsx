@@ -28,12 +28,13 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
   const name = lead ? displayNameFor(lead) : "…"
   const activeEtiquetas = lead?.etiquetas_seguimiento ?? []
   const windowStatus = lead ? computeWindowStatus(lead.last_inbound_at, now) : null
-  const canAssign = lead != null && lead.current_conversation_id !== null
 
+  // Ya no depende de current_conversation_id (Fase 2.6): el endpoint por
+  // lead resuelve/crea la conversación solo, así que asignar funciona
+  // igual para un lead que nunca escribió.
   function handleAssignChange(rawValue: string) {
-    if (!lead || lead.current_conversation_id === null) return
     const userId = rawValue === "" ? null : Number(rawValue)
-    assignMutation.mutate({ conversationId: lead.current_conversation_id, userId })
+    assignMutation.mutate(userId)
   }
 
   function toggleEtiqueta(etiqueta: EtiquetaSeguimiento) {
@@ -101,7 +102,7 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
           <SelectNative
             className="ml-auto w-auto max-w-[170px]"
             value={lead.assigned_to_id ?? ""}
-            disabled={!canAssign || assignMutation.isPending}
+            disabled={assignMutation.isPending}
             onChange={(e) => handleAssignChange(e.target.value)}
             aria-label="Asignar conversación"
           >

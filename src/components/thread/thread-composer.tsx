@@ -12,7 +12,7 @@ interface ThreadComposerProps {
   lead: Lead
   now: ReturnType<typeof useNow>
   onSend: (text: string) => void
-  onSendTemplate: (conversationId: number, templateLabel: string, templateKey: string, templateVars: Record<string, string>) => void
+  onSendTemplate: (templateLabel: string, templateKey: string, templateVars: Record<string, string>) => void
 }
 
 export function ThreadComposer({ lead, now, onSend, onSendTemplate }: ThreadComposerProps) {
@@ -23,7 +23,7 @@ export function ThreadComposer({ lead, now, onSend, onSendTemplate }: ThreadComp
     return <OpenComposer text={text} setText={setText} onSend={onSend} />
   }
   if (lead.stage === "HANDOFF") {
-    return <TemplateComposer lead={lead} windowLabel={windowStatus.label} onSendTemplate={onSendTemplate} />
+    return <TemplateComposer windowLabel={windowStatus.label} onSendTemplate={onSendTemplate} />
   }
   return <HandoffPrompt leadId={lead.id} windowLabel={windowStatus.label} />
 }
@@ -94,11 +94,9 @@ function HandoffPrompt({ leadId, windowLabel }: { leadId: number; windowLabel: s
 }
 
 function TemplateComposer({
-  lead,
   windowLabel,
   onSendTemplate,
 }: {
-  lead: Lead
   windowLabel: string
   onSendTemplate: ThreadComposerProps["onSendTemplate"]
 }) {
@@ -109,12 +107,10 @@ function TemplateComposer({
   if (selectedKey && selected) {
     return (
       <TemplateVariablesForm
-        lead={lead}
         template={selected}
         onCancel={() => setSelectedKey(null)}
         onConfirm={(vars) => {
-          if (lead.current_conversation_id === null) return
-          onSendTemplate(lead.current_conversation_id, selected.label, selected.key, vars)
+          onSendTemplate(selected.label, selected.key, vars)
           setSelectedKey(null)
         }}
       />
@@ -144,12 +140,10 @@ function TemplateComposer({
 }
 
 function TemplateVariablesForm({
-  lead,
   template,
   onCancel,
   onConfirm,
 }: {
-  lead: Lead
   template: SalesTemplate
   onCancel: () => void
   onConfirm: (vars: Record<string, string>) => void
@@ -161,9 +155,6 @@ function TemplateVariablesForm({
     <div className="flex shrink-0 flex-col gap-2 border-t border-border bg-muted/40 p-3 text-sm">
       <p className="font-medium">{template.label}</p>
       {template.preview_text && <p className="text-xs text-muted-foreground">{template.preview_text}</p>}
-      {lead.current_conversation_id === null && (
-        <p className="text-xs text-destructive">Este lead no tiene ninguna conversación todavía.</p>
-      )}
       <div className="flex flex-col gap-1.5">
         {template.variables.map((variable) => (
           <div key={variable.key} className="flex flex-col gap-1">
@@ -180,7 +171,7 @@ function TemplateVariablesForm({
         ))}
       </div>
       <div className="flex gap-2">
-        <Button size="sm" onClick={() => onConfirm(vars)} disabled={missingRequired || lead.current_conversation_id === null}>
+        <Button size="sm" onClick={() => onConfirm(vars)} disabled={missingRequired}>
           Confirmar envío
         </Button>
         <Button size="sm" variant="ghost" onClick={onCancel}>

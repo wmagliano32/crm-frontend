@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { assignConversation, unassignConversation } from "@/lib/conversations-api"
+import { assignLead, unassignLead } from "@/lib/conversations-api"
 import { addLeadEtiqueta, handoffLead, removeLeadEtiqueta, setLeadStage, updateLead } from "@/lib/leads-api"
 import type { EtiquetaSeguimiento, LeadStage, LeadUpdatePayload } from "@/lib/types"
 
@@ -17,13 +17,16 @@ function useInvalidateLead(leadId: number) {
 // userId null → desasignar. Nunca se usa el default de "sin user_id =
 // asignarme a mí" que tiene el backend: la cabecera siempre manda un id
 // explícito (el que se eligió en el selector, "Sin asignar" incluido).
+//
+// SIEMPRE por lead (Fase 2.6), nunca por conversación — ya no hace falta
+// un conversationId ni chequear si existe: el endpoint por lead resuelve
+// o crea la conversación OPEN solo. Antes esto quedaba inutilizable para
+// un lead que nunca escribió (current_conversation_id null, ej. un
+// cliente recién importado) — un solo camino, sin esa rama.
 export function useAssignConversation(leadId: number) {
   const invalidate = useInvalidateLead(leadId)
   return useMutation({
-    mutationFn: (params: { conversationId: number; userId: number | null }) =>
-      params.userId === null
-        ? unassignConversation(params.conversationId)
-        : assignConversation(params.conversationId, params.userId),
+    mutationFn: (userId: number | null) => (userId === null ? unassignLead(leadId) : assignLead(leadId, userId)),
     onSuccess: invalidate,
   })
 }

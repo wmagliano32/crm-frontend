@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
-import { sendConversationTemplate, sendLeadMessage } from "@/lib/conversations-api"
+import { sendLeadMessage, sendLeadTemplate } from "@/lib/conversations-api"
 import type { SendMessageResponse, WaSendResult } from "@/lib/types"
 
 export interface PendingMessage {
@@ -82,11 +82,13 @@ export function useSendMessage(leadId: number) {
     [leadId, enqueue]
   )
 
+  // Siempre por lead (Fase 2.6) — el endpoint resuelve/crea la
+  // conversación solo, ya no hace falta pasarle un conversationId.
   const sendTemplate = useCallback(
-    (conversationId: number, templateLabel: string, templateKey: string, templateVars: Record<string, string>) => {
-      enqueue(`Plantilla enviada: ${templateLabel}`, () => sendConversationTemplate(conversationId, templateKey, templateVars))
+    (templateLabel: string, templateKey: string, templateVars: Record<string, string>) => {
+      enqueue(`Plantilla enviada: ${templateLabel}`, () => sendLeadTemplate(leadId, templateKey, templateVars))
     },
-    [enqueue]
+    [leadId, enqueue]
   )
 
   const retry = useCallback(
