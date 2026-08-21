@@ -1,4 +1,4 @@
-import { UserRoundX } from "lucide-react"
+import { BadgeCheck, UserRoundX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { ageColorClass, displayNameFor, etiquetaLabel, formatRelativeTime, initialsFor, stageColorClass } from "@/lib/lead-format"
 import type { Lead } from "@/lib/types"
@@ -32,6 +32,18 @@ export function LeadRow({ lead, isSelected, onClick }: { lead: Lead; isSelected?
             className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-blue-500 ring-2 ring-background"
             title="Esperando respuesta"
           />
+        )}
+        {/* Discreto a propósito (Fase 2.6): un ícono chico en el borde del
+            avatar, no una pill de texto — para que un cliente se distinga
+            de un vistazo si alguna vez se mezclan con prospectos, sin
+            competir con las etiquetas de seguimiento. */}
+        {lead.es_cliente && (
+          <span
+            className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-background"
+            title="Cliente"
+          >
+            <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" aria-hidden />
+          </span>
         )}
       </div>
 

@@ -1,16 +1,18 @@
 import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
-import { useLocation, useNavigate, useParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { LeadFichaPanel } from "@/components/ficha/lead-ficha-panel"
 import { LeadListSkeleton } from "@/components/leads/lead-list-skeleton"
 import { LeadListEmpty, LeadListError } from "@/components/leads/lead-list-states"
 import { LeadRow } from "@/components/leads/lead-row"
+import { LeadsSegmentTabs, type LeadsSegment } from "@/components/leads/leads-segment-tabs"
 import { LeadsTabs, type LeadsTabKey } from "@/components/leads/leads-tabs"
 import { LeadThreadPanel } from "@/components/thread/lead-thread-panel"
 import { Input } from "@/components/ui/input"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useAllScopeLeads, useDefaultScopeLeads } from "@/hooks/use-leads"
 import { useAuth } from "@/lib/auth-context"
+import { displayNameFor } from "@/lib/lead-format"
 import type { Lead } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -33,6 +35,22 @@ function byOldestLastInboundFirst(a: Lead, b: Lead): number {
   return at - bt
 }
 
+// Clientes (Fase 2.6): "el más olvidado primero" no sirve como default
+// cuando TODOS están igual de vacíos (los importados nunca escribieron al
+// número nuevo, last_inbound_at null en los 38). Los que SÍ ya escribieron
+// van primero, con el mismo criterio de urgencia que un prospecto — dejan
+// de estar "vacíos" en cuanto mandan un mensaje real y merecen la misma
+// prioridad. Los que todavía no escribieron van después, alfabético por
+// nombre — así la lista se puede recorrer/buscar mientras no hay actividad
+// real que priorizar, en vez de quedar en un orden arbitrario de carga.
+function byClientDefaultOrder(a: Lead, b: Lead): number {
+  const aWrote = a.last_inbound_at !== null
+  const bWrote = b.last_inbound_at !== null
+  if (aWrote !== bWrote) return aWrote ? -1 : 1
+  if (aWrote && bWrote) return byOldestLastInboundFirst(a, b)
+  return displayNameFor(a).localeCompare(displayNameFor(b), "es", { sensitivity: "base" })
+}
+
 export function BandejaPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -46,6 +64,22 @@ export function BandejaPage() {
   // más abajo, no con dos mecanismos distintos. De regalo, sobrevive a un
   // reload igual que el hilo (Fase 2.2).
   const fichaOpen = location.pathname.endsWith("/ficha")
+
+  // Segmento en la URL (?segmento=clientes), no en un useState — pedido
+  // explícito de que sobreviva a un reload. "prospectos" es el default
+  // implícito (sin query param), así la URL no se ensucia con el caso
+  // más común.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const segment: LeadsSegment = searchParams.get("segmento") === "clientes" ? "clientes" : "prospectos"
+  const isClienteSegment = segment === "clientes"
+
+  function handleSegmentChange(next: LeadsSegment) {
+    const params = new URLSearchParams(searchParams)
+    if (next === "clientes") params.set("segmento", "clientes")
+    else params.delete("segmento")
+    setSearchParams(params, { replace: true })
+  }
+
   const [tab, setTab] = useState<LeadsTabKey>("pendientes")
   const [query, setQuery] = useState("")
   const debouncedQuery = useDebouncedValue(query, 300)
@@ -54,24 +88,41 @@ export function BandejaPage() {
   const allScope = useAllScopeLeads(debouncedQuery)
 
   const defaultLeads = useMemo(() => defaultScope.data?.results ?? [], [defaultScope.data])
-  const allLeads = allScope.data?.results ?? []
+  const allLeads = useMemo(() => allScope.data?.results ?? [], [allScope.data])
+
+  const segmentDefaultLeads = useMemo(
+    () => defaultLeads.filter((lead) => lead.es_cliente === isClienteSegment),
+    [defaultLeads, isClienteSegment]
+  )
+  const segmentAllLeads = useMemo(
+    () => allLeads.filter((lead) => lead.es_cliente === isClienteSegment),
+    [allLeads, isClienteSegment]
+  )
 
   const pendientes = useMemo(
-    () => defaultLeads.filter(isPendiente).sort(byOldestLastInboundFirst),
-    [defaultLeads]
+    () => segmentDefaultLeads.filter(isPendiente).sort(isClienteSegment ? byClientDefaultOrder : byOldestLastInboundFirst),
+    [segmentDefaultLeads, isClienteSegment]
   )
   const mios = useMemo(
-    () => defaultLeads.filter((lead) => user && lead.assigned_to_id === user.id),
-    [defaultLeads, user]
+    () => segmentDefaultLeads.filter((lead) => user && lead.assigned_to_id === user.id),
+    [segmentDefaultLeads, user]
+  )
+  const todos = useMemo(
+    () => (isClienteSegment ? [...segmentAllLeads].sort(byClientDefaultOrder) : segmentAllLeads),
+    [segmentAllLeads, isClienteSegment]
   )
 
-  const rows = tab === "pendientes" ? pendientes : tab === "mios" ? mios : allLeads
+  const rows = tab === "pendientes" ? pendientes : tab === "mios" ? mios : todos
   const activeQueryResult = tab === "todos" ? allScope : defaultScope
 
   const counts = {
     pendientes: defaultScope.data ? pendientes.length : undefined,
     mios: defaultScope.data ? mios.length : undefined,
-    todos: allScope.data ? allScope.data.count : undefined,
+    todos: allScope.data ? todos.length : undefined,
+  }
+  const segmentCounts = {
+    prospectos: allScope.data ? allLeads.filter((lead) => !lead.es_cliente).length : undefined,
+    clientes: allScope.data ? allLeads.filter((lead) => lead.es_cliente).length : undefined,
   }
 
   const hasSelection = selectedLeadId !== null
@@ -88,6 +139,10 @@ export function BandejaPage() {
           hasSelection && "hidden"
         )}
       >
+        <div className="shrink-0 border-b border-border px-3 pt-2">
+          <LeadsSegmentTabs value={segment} onChange={handleSegmentChange} counts={segmentCounts} />
+        </div>
+
         <div className="shrink-0 border-b border-border p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -110,7 +165,7 @@ export function BandejaPage() {
           ) : activeQueryResult.isError ? (
             <LeadListError onRetry={() => activeQueryResult.refetch()} />
           ) : rows.length === 0 ? (
-            <LeadListEmpty message={emptyMessageFor(tab, Boolean(debouncedQuery))} />
+            <LeadListEmpty message={emptyMessageFor(tab, segment, Boolean(debouncedQuery))} />
           ) : (
             rows.map((lead) => (
               <LeadRow
@@ -146,9 +201,10 @@ export function BandejaPage() {
   )
 }
 
-function emptyMessageFor(tab: LeadsTabKey, hasQuery: boolean): string {
+function emptyMessageFor(tab: LeadsTabKey, segment: LeadsSegment, hasQuery: boolean): string {
   if (hasQuery) return "No encontramos leads que coincidan con la búsqueda."
-  if (tab === "pendientes") return "No hay conversaciones pendientes. Buen trabajo."
-  if (tab === "mios") return "Todavía no tenés conversaciones asignadas."
-  return "No hay leads para mostrar."
+  const quien = segment === "clientes" ? "clientes" : "prospectos"
+  if (tab === "pendientes") return `No hay ${quien} pendientes. Buen trabajo.`
+  if (tab === "mios") return `Todavía no tenés ${quien} asignados.`
+  return `No hay ${quien} para mostrar.`
 }
