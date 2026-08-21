@@ -1,6 +1,6 @@
 import { UserRoundX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { displayNameFor, etiquetaLabel, formatRelativeTime, initialsFor, stageColorClass } from "@/lib/lead-format"
+import { ageColorClass, displayNameFor, etiquetaLabel, formatRelativeTime, initialsFor, stageColorClass } from "@/lib/lead-format"
 import type { Lead } from "@/lib/types"
 
 export function LeadRow({ lead }: { lead: Lead }) {
@@ -30,7 +30,9 @@ export function LeadRow({ lead }: { lead: Lead }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
           <p className="truncate text-sm font-medium">{name}</p>
-          <span className="shrink-0 text-xs text-muted-foreground">{formatRelativeTime(lead.last_message_at)}</span>
+          <span className={`shrink-0 text-xs ${ageColorClass(lead.last_message_at)}`}>
+            {formatRelativeTime(lead.last_message_at)}
+          </span>
         </div>
 
         <p className="truncate text-sm text-muted-foreground">{lead.last_message_text || "Sin mensajes"}</p>

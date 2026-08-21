@@ -12,6 +12,20 @@ export function formatRelativeTime(iso: string | null): string {
   return `${diffD} d`
 }
 
+// Clase de color según antigüedad del último mensaje: un lead de 4 meses y
+// uno de 2hs no pueden verse igual. < 24h resalta (recién pasó algo), 1-7d
+// es el gris "normal" de antes, > 7d ámbar (se está enfriando), > 30d rojo
+// (lead frío). Ordenar por más antiguo primero (como hace "Pendientes")
+// deja los rojos arriba solo — no hace falta lógica de orden aparte.
+export function ageColorClass(iso: string | null): string {
+  if (!iso) return "text-muted-foreground"
+  const hours = (Date.now() - new Date(iso).getTime()) / 3_600_000
+  if (hours < 24) return "text-foreground font-medium"
+  if (hours <= 24 * 7) return "text-muted-foreground"
+  if (hours <= 24 * 30) return "text-amber-600 dark:text-amber-500 font-medium"
+  return "text-rose-600 dark:text-rose-500 font-semibold"
+}
+
 export function initialsFor(name: string): string {
   const trimmed = name.trim()
   if (!trimmed) return "?"

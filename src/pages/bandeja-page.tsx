@@ -56,7 +56,7 @@ export function BandejaPage() {
 
   return (
     <div className="flex h-full min-h-0 w-full">
-      <div className="flex h-full min-h-0 w-full flex-col md:w-[280px] md:shrink-0 md:border-r md:border-border">
+      <div className="flex h-full min-h-0 w-full flex-col md:w-[340px] md:shrink-0 md:border-r md:border-border">
         <div className="shrink-0 border-b border-border p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
