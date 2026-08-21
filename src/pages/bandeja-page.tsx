@@ -117,7 +117,10 @@ export function BandejaPage() {
 
       <div className={cn("h-full min-h-0 flex-1", !hasSelection && "hidden md:block")}>
         {selectedLeadId !== null ? (
-          <LeadThreadPanel leadId={selectedLeadId} onBack={() => navigate("/")} />
+          // key=leadId: fuerza remount al cambiar de lead — resetea de
+          // una el scroll del hilo y los mensajes "enviando"/con error en
+          // curso, en vez de tener que limpiarlos a mano.
+          <LeadThreadPanel key={selectedLeadId} leadId={selectedLeadId} onBack={() => navigate("/")} />
         ) : (
           <div className="hidden h-full items-center justify-center text-sm text-muted-foreground md:flex">
             Elegí una conversación para ver el hilo.

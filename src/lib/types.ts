@@ -127,3 +127,85 @@ export interface MessageThreadPage {
   next_cursor: string | null
   has_more: boolean
 }
+
+// Respuesta de assign/unassign (ConversationSerializer completo). No se
+// usa para renderizar el hilo (eso lo cubre ThreadMessage/lead-thread) —
+// solo para reconciliar el estado de asignación tras la mutación.
+export interface Conversation {
+  id: number
+  lead: number
+  status: "OPEN" | "CLOSED"
+  assigned_to: number | null
+  assigned_to_name: string | null
+  assigned_at: string | null
+  assigned_by: number | null
+  assigned_by_name: string | null
+  is_archived: boolean
+  is_deleted: boolean
+  created_at: string
+  updated_at: string
+}
+
+// GET /crm/empleados/ (Fase 2.3, Paso 0 aprobado: list/retrieve relajado a
+// IsCrmUser — antes solo ADMIN_CRM podía verlo, y un COMERCIAL necesita el
+// listado para poder asignar). id es el de UsuarioCRM; user_id es el de
+// User, el que espera assign() y el que trae Lead.assigned_to_id — son
+// espacios de ids distintos, no intercambiables.
+export interface Empleado {
+  id: number
+  user_id: number
+  username: string
+  email: string
+  nombre: string
+  apellido: string
+  rol: CrmRol
+  activo: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface TemplateVariable {
+  key: string
+  label: string
+  required: boolean
+}
+
+// GET /api/sales/conversations/templates/. Hoy en producción devuelve
+// UNA sola plantilla (la fija por settings) — el resto del catálogo
+// (twilio_plantillas) tiene un bug de scoping heredado del modelo
+// multi-tenant (created_by/main_user, que no aplica a usuarios CRM) y
+// queda fuera. No se corrige en esta fase (Paso 0, Fase 2.3) — el tipo
+// modela el contrato completo para no tener que tocarlo cuando se arregle.
+export interface SalesTemplate {
+  key: string
+  label: string
+  description: string
+  template_sid: string
+  source: string
+  enabled: boolean
+  preview_text: string
+  variables: TemplateVariable[]
+}
+
+// Resultado de intentar mandar por Twilio (sales_ai/services/whatsapp_smart.py).
+// wa.ok en false NO es un error HTTP — la request a /send/ puede devolver
+// 200 con wa.ok=false (ej. fuera de ventana de 24h, error 63016 de Twilio).
+export interface WaSendResult {
+  ok: boolean
+  mode?: string
+  sid?: string
+  error?: string
+  code?: number | string | null
+  detail?: string
+  template_used?: boolean
+}
+
+// POST /api/sales/leads/{id}/send/ y /api/sales/conversations/{id}/send-template/.
+// "ok" de raíz es SIEMPRE true si la request se procesó (el mensaje se creó
+// en la base) — NUNCA usarlo para decidir si el WhatsApp salió. Mirar
+// wa?.ok (puede ser null si text vino vacío, ej. solo adjunto).
+export interface SendMessageResponse {
+  ok: boolean
+  wa: WaSendResult | null
+  message: Omit<ThreadMessage, "conversacion_eliminada">
+}

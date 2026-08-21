@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api-client"
-import type { Lead, PaginatedResponse } from "@/lib/types"
+import type { EtiquetaSeguimiento, Lead, PaginatedResponse } from "@/lib/types"
 
 export type LeadsScope = "all" | "archived" | "handoff"
 
@@ -18,4 +18,23 @@ export function fetchLeads(params: FetchLeadsParams = {}): Promise<PaginatedResp
 
 export function fetchLead(id: number): Promise<Lead> {
   return apiFetch<Lead>(`/api/sales/leads/${id}/`)
+}
+
+interface EtiquetaMutationResponse {
+  ok: boolean
+  etiquetas_seguimiento: EtiquetaSeguimiento[]
+}
+
+// Uno solo por request — el backend rechaza (400) si vienen los dos o
+// ninguno (sales_ai/views.py LeadViewSet.etiquetas, Fase 2.3).
+export function addLeadEtiqueta(leadId: number, etiqueta: EtiquetaSeguimiento): Promise<EtiquetaMutationResponse> {
+  return apiFetch(`/api/sales/leads/${leadId}/etiquetas/`, { method: "POST", body: { add: etiqueta } })
+}
+
+export function removeLeadEtiqueta(leadId: number, etiqueta: EtiquetaSeguimiento): Promise<EtiquetaMutationResponse> {
+  return apiFetch(`/api/sales/leads/${leadId}/etiquetas/`, { method: "POST", body: { remove: etiqueta } })
+}
+
+export function handoffLead(leadId: number): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/sales/leads/${leadId}/handoff/`, { method: "POST" })
 }

@@ -1,4 +1,4 @@
-import type { LeadStage } from "@/lib/types"
+import type { EtiquetaSeguimiento, LeadStage } from "@/lib/types"
 
 export function formatRelativeTime(iso: string | null): string {
   if (!iso) return ""
@@ -54,7 +54,22 @@ export function stageColorClass(stage: LeadStage): string {
   return STAGE_COLOR[stage] ?? "bg-slate-400"
 }
 
-const ETIQUETA_LABEL: Record<string, string> = {
+const STAGE_LABEL: Record<LeadStage, string> = {
+  NEW: "Nuevo",
+  QUALIFY: "Calificando",
+  PITCH: "Presentación",
+  SCHEDULING: "Agendando",
+  BOOKED: "Demo agendada",
+  HANDOFF: "Handoff",
+  OPTED_OUT: "Se dio de baja",
+  CLOSED: "Cerrado",
+}
+
+export function stageLabel(stage: LeadStage): string {
+  return STAGE_LABEL[stage] ?? stage
+}
+
+const ETIQUETA_LABEL: Record<EtiquetaSeguimiento, string> = {
   RESPONDER_HOY: "Responder hoy",
   ESPERANDO_CLIENTE: "Esperando cliente",
   PIDIO_PRECIO: "Pidió precio",
@@ -63,6 +78,10 @@ const ETIQUETA_LABEL: Record<string, string> = {
   SIN_DATOS: "Sin datos",
 }
 
+// Vocabulario cerrado completo, en el orden en que se ofrecen para
+// agregar (sales_ai.models.EtiquetaSeguimiento en el backend).
+export const ALL_ETIQUETAS = Object.keys(ETIQUETA_LABEL) as EtiquetaSeguimiento[]
+
 export function etiquetaLabel(etiqueta: string): string {
-  return ETIQUETA_LABEL[etiqueta] ?? etiqueta
+  return ETIQUETA_LABEL[etiqueta as EtiquetaSeguimiento] ?? etiqueta
 }

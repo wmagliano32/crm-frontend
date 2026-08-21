@@ -1,14 +1,18 @@
-import { ArrowLeft, ChevronUp, Loader2 } from "lucide-react"
+import { ChevronUp, Loader2 } from "lucide-react"
 import { useEffect, useMemo, useRef } from "react"
 import { ThreadMessageRun } from "@/components/thread/thread-message-bubble"
+import { ThreadComposer } from "@/components/thread/thread-composer"
+import { ThreadHeader } from "@/components/thread/thread-header"
+import { ThreadPendingBubble } from "@/components/thread/thread-pending-bubble"
 import { ThreadSeparator } from "@/components/thread/thread-separator"
 import { ThreadEmpty, ThreadError, ThreadSkeleton } from "@/components/thread/thread-states"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
 import { useLeadThread } from "@/hooks/use-lead-thread"
 import { useLead } from "@/hooks/use-leads"
-import { displayNameFor, initialsFor, stageColorClass } from "@/lib/lead-format"
-import { formatDaySeparator, formatReengagementLabel, isHumanOutbound, isSameCalendarDay } from "@/lib/thread-format"
+import { useNow } from "@/hooks/use-now"
+import { useSendMessage } from "@/hooks/use-send-message"
+import { isHumanOutbound, isSameCalendarDay } from "@/lib/thread-format"
+import { formatDaySeparator, formatReengagementLabel } from "@/lib/thread-format"
 import type { ThreadMessage } from "@/lib/types"
 
 type ThreadItem =
@@ -83,37 +87,14 @@ function buildThreadItems(messagesAsc: ThreadMessage[]): ThreadItem[] {
   return items
 }
 
-function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () => void }) {
-  const { data: lead } = useLead(leadId)
-  const name = lead ? displayNameFor(lead) : "…"
-
-  return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5">
-      <Button variant="ghost" size="icon" className="md:hidden" onClick={onBack} aria-label="Volver a la bandeja">
-        <ArrowLeft className="h-4 w-4" />
-      </Button>
-      {lead ? (
-        <div
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${stageColorClass(lead.stage)}`}
-          aria-hidden
-        >
-          {initialsFor(name)}
-        </div>
-      ) : (
-        <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
-      )}
-      <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{name}</p>
-        {lead && <p className="truncate text-xs text-muted-foreground">{lead.phone_e164}</p>}
-      </div>
-    </div>
-  )
-}
-
 export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: () => void }) {
   const thread = useLeadThread(leadId)
+  const { data: lead } = useLead(leadId)
+  const now = useNow()
+  const { pending, send, sendTemplate, retry, dismiss } = useSendMessage(leadId)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevScrollHeightRef = useRef<number | null>(null)
+  const pendingCountRef = useRef(0)
 
   const messagesAsc = useMemo(() => {
     // Cada página viene más-reciente-primero y las páginas se piden de más
@@ -145,6 +126,17 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
     }
   }, [thread.data?.pages.length])
 
+  // Un mensaje propio recién mandado siempre lleva la vista al final —
+  // distinto del caso de arriba (cargar viejos), acá el usuario acaba de
+  // generar el contenido nuevo, tiene sentido mostrárselo sin que tenga
+  // que scrollear.
+  useEffect(() => {
+    if (pending.length > pendingCountRef.current && containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+    pendingCountRef.current = pending.length
+  }, [pending.length])
+
   const handleLoadOlder = () => {
     if (containerRef.current) {
       prevScrollHeightRef.current = containerRef.current.scrollHeight
@@ -156,33 +148,46 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
     <div className="flex h-full min-h-0 flex-col">
       <ThreadHeader leadId={leadId} onBack={onBack} />
 
-      {thread.isLoading ? (
-        <ThreadSkeleton />
-      ) : thread.isError ? (
-        <ThreadError onRetry={() => thread.refetch()} />
-      ) : items.length === 0 ? (
-        <ThreadEmpty />
-      ) : (
-        <div ref={containerRef} className="flex-1 overflow-y-auto px-3 py-3">
-          {thread.hasNextPage && (
-            <div className="flex justify-center pb-3">
-              <Button variant="outline" size="sm" onClick={handleLoadOlder} disabled={thread.isFetchingNextPage}>
-                {thread.isFetchingNextPage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ChevronUp className="h-3.5 w-3.5" />}
-                Cargar anteriores
-              </Button>
-            </div>
-          )}
-          <div className="flex flex-col gap-1">
-            {items.map((item) =>
-              item.type === "separator" ? (
-                <ThreadSeparator key={item.key} label={item.label} muted={item.muted} />
-              ) : (
-                <ThreadMessageRun key={item.key} messages={item.messages} />
-              )
+      <div ref={containerRef} className="flex-1 overflow-y-auto px-3 py-3">
+        {thread.isLoading ? (
+          <ThreadSkeleton />
+        ) : thread.isError ? (
+          <ThreadError onRetry={() => thread.refetch()} />
+        ) : (
+          <>
+            {thread.hasNextPage && (
+              <div className="flex justify-center pb-3">
+                <Button variant="outline" size="sm" onClick={handleLoadOlder} disabled={thread.isFetchingNextPage}>
+                  {thread.isFetchingNextPage ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  )}
+                  Cargar anteriores
+                </Button>
+              </div>
             )}
-          </div>
-        </div>
-      )}
+            {items.length === 0 && pending.length === 0 ? (
+              <ThreadEmpty />
+            ) : (
+              <div className="flex flex-col gap-1">
+                {items.map((item) =>
+                  item.type === "separator" ? (
+                    <ThreadSeparator key={item.key} label={item.label} muted={item.muted} />
+                  ) : (
+                    <ThreadMessageRun key={item.key} messages={item.messages} />
+                  )
+                )}
+                {pending.map((p) => (
+                  <ThreadPendingBubble key={p.localId} pending={p} onRetry={retry} onDismiss={dismiss} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {lead && <ThreadComposer lead={lead} now={now} onSend={send} onSendTemplate={sendTemplate} />}
     </div>
   )
 }
