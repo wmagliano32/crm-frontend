@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api-client"
-import type { EtiquetaSeguimiento, Lead, PaginatedResponse } from "@/lib/types"
+import type { EtiquetaSeguimiento, Lead, LeadStage, LeadUpdatePayload, PaginatedResponse } from "@/lib/types"
 
 export type LeadsScope = "all" | "archived" | "handoff"
 
@@ -37,4 +37,15 @@ export function removeLeadEtiqueta(leadId: number, etiqueta: EtiquetaSeguimiento
 
 export function handoffLead(leadId: number): Promise<{ ok: boolean }> {
   return apiFetch(`/api/sales/leads/${leadId}/handoff/`, { method: "POST" })
+}
+
+// PATCH real sobre el recurso (Fase 2.5) — el backend devuelve la lectura
+// completa (LeadSerializer), no un eco del payload de escritura, así que
+// esto ya sirve para actualizar la caché sin un GET aparte.
+export function updateLead(leadId: number, patch: LeadUpdatePayload): Promise<Lead> {
+  return apiFetch<Lead>(`/api/sales/leads/${leadId}/`, { method: "PATCH", body: patch })
+}
+
+export function setLeadStage(leadId: number, stage: LeadStage): Promise<{ ok: boolean; stage: LeadStage }> {
+  return apiFetch(`/api/sales/leads/${leadId}/set-stage/`, { method: "POST", body: { stage } })
 }

@@ -27,6 +27,7 @@ export default function App() {
               <Route element={<AppLayout />}>
                 <Route path="/" element={<BandejaPage />} />
                 <Route path="/bandeja/:leadId" element={<BandejaPage />} />
+                <Route path="/bandeja/:leadId/ficha" element={<BandejaPage />} />
               </Route>
             </Route>
           </Routes>

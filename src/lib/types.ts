@@ -71,7 +71,21 @@ export interface Lead {
   // FK a User (no a UsuarioCRM) — ver sales_ai/views.py LeadViewSet.get_queryset.
   assigned_to_id: number | null
   assigned_to_name: string | null
+  // Commit E los agregó al modelo; sumados al serializer en la Fase 2.5.
+  // La ficha de cliente completa (consorcios, UF, última liquidación) es
+  // una fase aparte — esto es solo lo mínimo para no ocultar el estado.
+  usuario_convertido_id: number | null
+  fecha_conversion: string | null
 }
+
+// Campos de contacto/calificación editables desde la ficha del lead
+// (Fase 2.5) — PATCH /api/sales/leads/{id}/. Coincide con
+// LeadUpdateSerializer del backend: stage tiene su propio endpoint
+// (set-stage), etiquetas_seguimiento el suyo (Fase 2.3), y es_cliente/
+// usuario_convertido no se editan por acá.
+export type LeadUpdatePayload = Partial<
+  Pick<Lead, "name" | "email" | "company" | "role" | "city" | "consorcios_count" | "units_count" | "current_system" | "main_pain" | "score">
+>
 
 export interface PaginatedResponse<T> {
   count: number

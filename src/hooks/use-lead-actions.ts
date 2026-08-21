@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { assignConversation, unassignConversation } from "@/lib/conversations-api"
-import { addLeadEtiqueta, handoffLead, removeLeadEtiqueta } from "@/lib/leads-api"
-import type { EtiquetaSeguimiento } from "@/lib/types"
+import { addLeadEtiqueta, handoffLead, removeLeadEtiqueta, setLeadStage, updateLead } from "@/lib/leads-api"
+import type { EtiquetaSeguimiento, LeadStage, LeadUpdatePayload } from "@/lib/types"
 
 // Asignación/etiquetas/stage se ven tanto en la cabecera del hilo como en
 // la lista de la bandeja (avatar de asignado, pills de etiquetas) —
@@ -44,5 +44,27 @@ export function useHandoffLead(leadId: number) {
   return useMutation({
     mutationFn: () => handoffLead(leadId),
     onSuccess: invalidate,
+  })
+}
+
+export function useSetLeadStage(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: (stage: LeadStage) => setLeadStage(leadId, stage),
+    onSuccess: invalidate,
+  })
+}
+
+// El PATCH devuelve la lectura completa (LeadSerializer) — se escribe
+// directo en la caché de ["lead", leadId] en vez de solo invalidar, así
+// el campo recién editado no "parpadea" esperando un refetch.
+export function useUpdateLead(leadId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: LeadUpdatePayload) => updateLead(leadId, patch),
+    onSuccess: (updatedLead) => {
+      queryClient.setQueryData(["lead", leadId], updatedLead)
+      queryClient.invalidateQueries({ queryKey: ["leads"] })
+    },
   })
 }

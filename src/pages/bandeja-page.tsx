@@ -1,6 +1,7 @@
 import { Search } from "lucide-react"
 import { useMemo, useState } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import { useLocation, useNavigate, useParams } from "react-router-dom"
+import { LeadFichaPanel } from "@/components/ficha/lead-ficha-panel"
 import { LeadListSkeleton } from "@/components/leads/lead-list-skeleton"
 import { LeadListEmpty, LeadListError } from "@/components/leads/lead-list-states"
 import { LeadRow } from "@/components/leads/lead-row"
@@ -35,8 +36,16 @@ function byOldestLastInboundFirst(a: Lead, b: Lead): number {
 export function BandejaPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const { leadId } = useParams<{ leadId: string }>()
   const selectedLeadId = leadId ? Number(leadId) : null
+  // La ficha es una ruta, no un estado de componente aparte (Fase 2.5):
+  // en escritorio es un panel colapsable de una tercera columna, en
+  // celular reemplaza todo — los dos casos son la MISMA condición
+  // ("¿la ruta actual termina en /ficha?"), resuelta con CSS responsive
+  // más abajo, no con dos mecanismos distintos. De regalo, sobrevive a un
+  // reload igual que el hilo (Fase 2.2).
+  const fichaOpen = location.pathname.endsWith("/ficha")
   const [tab, setTab] = useState<LeadsTabKey>("pendientes")
   const [query, setQuery] = useState("")
   const debouncedQuery = useDebouncedValue(query, 300)
@@ -115,7 +124,7 @@ export function BandejaPage() {
         </div>
       </div>
 
-      <div className={cn("h-full min-h-0 flex-1", !hasSelection && "hidden md:block")}>
+      <div className={cn("h-full min-h-0 flex-1", (!hasSelection || fichaOpen) && "hidden md:block")}>
         {selectedLeadId !== null ? (
           // key=leadId: fuerza remount al cambiar de lead — resetea de
           // una el scroll del hilo y los mensajes "enviando"/con error en
@@ -127,6 +136,12 @@ export function BandejaPage() {
           </div>
         )}
       </div>
+
+      {selectedLeadId !== null && fichaOpen && (
+        <div className="h-full min-h-0 w-full md:w-[340px] md:shrink-0 md:border-l md:border-border">
+          <LeadFichaPanel key={selectedLeadId} leadId={selectedLeadId} onClose={() => navigate(`/bandeja/${selectedLeadId}`)} />
+        </div>
+      )}
     </div>
   )
 }

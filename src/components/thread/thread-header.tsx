@@ -1,5 +1,6 @@
-import { ArrowLeft, Plus, X } from "lucide-react"
+import { ArrowLeft, Info, Plus, X } from "lucide-react"
 import { useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { SelectNative } from "@/components/ui/select-native"
@@ -19,6 +20,9 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
   const assignMutation = useAssignConversation(leadId)
   const etiquetaMutation = useLeadEtiquetaMutation(leadId)
   const now = useNow()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const fichaOpen = location.pathname.endsWith("/ficha")
   const [etiquetasOpen, setEtiquetasOpen] = useState(false)
 
   const name = lead ? displayNameFor(lead) : "…"
@@ -65,6 +69,16 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
             {stageLabel(lead.stage)}
           </Badge>
         )}
+        <Button
+          variant={fichaOpen ? "secondary" : "ghost"}
+          size="icon"
+          className="shrink-0"
+          onClick={() => navigate(fichaOpen ? `/bandeja/${leadId}` : `/bandeja/${leadId}/ficha`)}
+          aria-label="Ver ficha del lead"
+          aria-pressed={fichaOpen}
+        >
+          <Info className="h-4 w-4" />
+        </Button>
       </div>
 
       {lead && windowStatus && (
