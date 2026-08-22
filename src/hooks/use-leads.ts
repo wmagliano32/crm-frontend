@@ -8,11 +8,32 @@ import { fetchLead, fetchLeads } from "@/lib/leads-api"
 // nada y permite mostrar los 3 contadores de tabs desde el arranque, sin
 // esperar a que el usuario cambie de tab.
 
+// Fase 2.11, Paso 0 aprobado: sin esto no hay ninguna forma de que el
+// contador de no leídos (tabs de segmento) ni el título de la pestaña se
+// actualicen solos — hoy la bandeja solo refresca al enfocar la ventana
+// (refetchOnWindowFocus en App.tsx) o al vencer el staleTime y remontar
+// algo. 30s alcanza para "no se te pasa un mensaje", sin ser agresivo.
+//
+// refetchIntervalInBackground: true es NO NEGOCIABLE para esta feature,
+// no un capricho — TanStack Query lo trae en `false` por default, lo que
+// PAUSA el polling justo cuando la pestaña está en segundo plano. Es
+// exactamente el caso que el indicador del título del navegador más
+// necesita cubrir ("con la app abierta en otra pestaña", pedido
+// explícito de la Fase 2.11): sin este `true`, el título dejaría de
+// actualizarse apenas el usuario cambia de pestaña, que es lo opuesto de
+// lo que se pidió. Si alguien lo saca "para limpiar" sin leer esto, la
+// pestaña vuelve a quedarse muda en segundo plano.
+const UNREAD_POLL_OPTIONS = {
+  refetchInterval: 30_000,
+  refetchIntervalInBackground: true,
+} as const
+
 export function useDefaultScopeLeads(q: string) {
   return useQuery({
     queryKey: ["leads", "default", q],
     queryFn: () => fetchLeads({ q: q || undefined }),
     staleTime: 30_000,
+    ...UNREAD_POLL_OPTIONS,
   })
 }
 
@@ -21,6 +42,7 @@ export function useAllScopeLeads(q: string) {
     queryKey: ["leads", "all", q],
     queryFn: () => fetchLeads({ scope: "all", q: q || undefined }),
     staleTime: 30_000,
+    ...UNREAD_POLL_OPTIONS,
   })
 }
 

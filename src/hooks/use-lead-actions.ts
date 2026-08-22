@@ -6,6 +6,7 @@ import {
   deleteLead,
   handoffLead,
   markLeadLost,
+  markLeadRead,
   removeLeadEtiqueta,
   reopenLead,
   setLeadStage,
@@ -122,5 +123,21 @@ export function useDeleteLead(leadId: number) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] })
     },
+  })
+}
+
+// Fase 2.11: se llama al abrir el hilo, inmediato y sin condición (Paso
+// 0 aprobado — un retardo para evitar un click accidental introduciría
+// una carrera peor: si el usuario navega a otro lead antes de que venza
+// el retardo, ¿qué se marca leído? El costo de marcar de más es bajo, el
+// punto azul de "esperando respuesta" sigue señalando igual que hay que
+// contestar). Invalida ["leads"] para que el contador de no leídos de
+// los tabs y el título de la pestaña se actualicen sin esperar al
+// próximo polling.
+export function useMarkLeadRead(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: () => markLeadRead(leadId),
+    onSuccess: invalidate,
   })
 }

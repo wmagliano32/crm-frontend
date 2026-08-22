@@ -1,5 +1,5 @@
 import { Search } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { LeadFichaPanel } from "@/components/ficha/lead-ficha-panel"
 import { LeadListSkeleton } from "@/components/leads/lead-list-skeleton"
@@ -132,9 +132,26 @@ export function BandejaPage() {
     archivados: archivedScope.data ? archivados.length : undefined,
   }
   const segmentCounts = {
-    prospectos: allScope.data ? allLeads.filter((lead) => !lead.es_cliente).length : undefined,
-    clientes: allScope.data ? allLeads.filter((lead) => lead.es_cliente).length : undefined,
+    prospectos: allScope.data
+      ? { total: allLeads.filter((lead) => !lead.es_cliente).length, unread: allLeads.filter((lead) => !lead.es_cliente && lead.unread).length }
+      : undefined,
+    clientes: allScope.data
+      ? { total: allLeads.filter((lead) => lead.es_cliente).length, unread: allLeads.filter((lead) => lead.es_cliente && lead.unread).length }
+      : undefined,
   }
+
+  // Fase 2.11, pedido explícito: el título cuenta los no leídos de AMBOS
+  // segmentos (Prospectos + Clientes), no solo el que se está mirando —
+  // allLeads ya los trae a los dos juntos, sin filtrar por segmento.
+  const totalUnread = useMemo(() => allLeads.filter((lead) => lead.unread).length, [allLeads])
+  useEffect(() => {
+    document.title = totalUnread > 0 ? `(${totalUnread}) WAM CRM` : "WAM CRM"
+    // Al salir de la bandeja (ej. logout, BandejaPage desmonta y entra
+    // LoginPage) el título no debe quedar pegado en "(3) WAM CRM".
+    return () => {
+      document.title = "WAM CRM"
+    }
+  }, [totalUnread])
 
   const hasSelection = selectedLeadId !== null
 

@@ -7,6 +7,7 @@ import { ThreadPendingBubble } from "@/components/thread/thread-pending-bubble"
 import { ThreadSeparator } from "@/components/thread/thread-separator"
 import { ThreadEmpty, ThreadError, ThreadSkeleton } from "@/components/thread/thread-states"
 import { Button } from "@/components/ui/button"
+import { useMarkLeadRead } from "@/hooks/use-lead-actions"
 import { useLeadThread } from "@/hooks/use-lead-thread"
 import { useLead } from "@/hooks/use-leads"
 import { useNow } from "@/hooks/use-now"
@@ -95,6 +96,17 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
   const containerRef = useRef<HTMLDivElement>(null)
   const prevScrollHeightRef = useRef<number | null>(null)
   const pendingCountRef = useRef(0)
+  const markRead = useMarkLeadRead(leadId)
+
+  // Fase 2.11, Paso 0 aprobado: inmediato al abrir el hilo, sin retardo
+  // — este componente ya se remonta por lead (key={selectedLeadId} en
+  // bandeja-page.tsx), así que un solo efecto en el mount alcanza, sin
+  // depender de si el lead ya está "leído" o no (marcar de más es
+  // inocuo, el punto azul de "esperando respuesta" no depende de esto).
+  useEffect(() => {
+    markRead.mutate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leadId])
 
   const messagesAsc = useMemo(() => {
     // Cada página viene más-reciente-primero y las páginas se piden de más

@@ -87,3 +87,9 @@ export function reopenLead(leadId: number): Promise<{ ok: boolean; stage: LeadSt
 export function deleteLead(leadId: number): Promise<{ ok: boolean; deleted: boolean }> {
   return apiFetch(`/api/sales/leads/${leadId}/delete/`, { method: "POST" })
 }
+
+// Fase 2.11: compartido por lead (no por empleado) — cualquier CRM
+// activo puede llamarlo, se dispara al abrir el hilo.
+export function markLeadRead(leadId: number): Promise<{ ok: boolean; last_read_at: string }> {
+  return apiFetch(`/api/sales/leads/${leadId}/mark-read/`, { method: "POST" })
+}

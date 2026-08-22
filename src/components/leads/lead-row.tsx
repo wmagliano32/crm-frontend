@@ -88,7 +88,12 @@ export function LeadRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="truncate text-sm font-medium">{name}</p>
+          {/* Fase 2.11: "no leído" es un indicador NUEVO y distinto del
+              punto azul de arriba (que sigue significando "esperando
+              respuesta", sin cambios) — negrita, mismo criterio visual
+              que WhatsApp/Gmail para un chat sin leer, no otro punto más
+              compitiendo por atención en el avatar. */}
+          <p className={cn("truncate text-sm", lead.unread ? "font-bold" : "font-medium")}>{name}</p>
           {/* Antigüedad medida desde el último mensaje DEL LEAD
               (last_inbound_at), no desde el último mensaje cualquiera: si el
               bot le escribió hace 3 días pero el lead no habla hace 4 meses,
@@ -101,7 +106,9 @@ export function LeadRow({
         {lostReason ? (
           <p className="truncate text-sm text-muted-foreground">Perdido — {lostReason}</p>
         ) : lead.last_inbound_text ? (
-          <p className="truncate text-sm text-muted-foreground">{lead.last_inbound_text}</p>
+          <p className={cn("truncate text-sm", lead.unread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+            {lead.last_inbound_text}
+          </p>
         ) : (
           <p className="truncate text-sm italic text-muted-foreground/60">Sin respuesta del lead</p>
         )}

@@ -77,6 +77,12 @@ export interface Lead {
   score: number
   last_inbound_at: string | null
   last_outbound_at: string | null
+  // Fase 2.11: compartido por lead, no por empleado — si cualquiera del
+  // equipo abre el hilo, queda "leído" para todos. `unread` es
+  // computado por el backend (last_inbound_at vs. last_read_at), no
+  // hace falta rederivarlo acá.
+  last_read_at: string | null
+  unread: boolean
   opted_out_at: string | null
   created_at: string
   updated_at: string
