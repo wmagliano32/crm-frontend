@@ -93,3 +93,9 @@ export function deleteLead(leadId: number): Promise<{ ok: boolean; deleted: bool
 export function markLeadRead(leadId: number): Promise<{ ok: boolean; last_read_at: string }> {
   return apiFetch(`/api/sales/leads/${leadId}/mark-read/`, { method: "POST" })
 }
+
+// Urgente, Paso 0 aprobado: única forma de que el bot vuelva a hablar en
+// la conversación OPEN actual del lead — nada lo reactiva solo.
+export function reactivateBot(leadId: number): Promise<{ ok: boolean; bot_paused: boolean }> {
+  return apiFetch(`/api/sales/leads/${leadId}/reactivate-bot/`, { method: "POST" })
+}

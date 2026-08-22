@@ -100,6 +100,12 @@ export interface Lead {
   // Fase 2.8: computado (no un campo propio del modelo) — true cuando
   // TODAS las conversaciones no eliminadas del lead están archivadas.
   is_archived: boolean
+  // Bot pausado (urgente, Paso 0 aprobado): true cuando un humano ya
+  // intervino en la conversación actual (mensaje desde el inbox,
+  // asignación, o pegó el link de Meet a mano) — el bot dejó de
+  // responder ahí. Computado desde Conversation.bot_paused_at, no
+  // vuelve a false solo; solo el botón "Reactivar bot" lo limpia.
+  bot_paused: boolean
   // Commit E los agregó al modelo; sumados al serializer en la Fase 2.5.
   // La ficha de cliente completa (consorcios, UF, última liquidación) es
   // una fase aparte — esto es solo lo mínimo para no ocultar el estado.

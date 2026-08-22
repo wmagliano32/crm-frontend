@@ -7,6 +7,7 @@ import {
   handoffLead,
   markLeadLost,
   markLeadRead,
+  reactivateBot,
   removeLeadEtiqueta,
   reopenLead,
   setLeadStage,
@@ -144,5 +145,15 @@ export function useMarkLeadRead(leadId: number) {
     // ningún otro mecanismo que lo vuelva a intentar (Bug 1, reportado en
     // producción).
     retry: 2,
+  })
+}
+
+// Urgente, Paso 0 aprobado: única acción que limpia bot_paused_at — el
+// botón "Reactivar bot" de la cabecera del hilo.
+export function useReactivateBot(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: () => reactivateBot(leadId),
+    onSuccess: invalidate,
   })
 }

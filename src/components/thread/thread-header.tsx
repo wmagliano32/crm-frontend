@@ -1,4 +1,4 @@
-import { ArrowLeft, Info, Plus, X } from "lucide-react"
+import { ArrowLeft, Bot, Info, Plus, X } from "lucide-react"
 import { useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
@@ -7,7 +7,7 @@ import { LeadActionsMenu } from "@/components/leads/lead-actions-menu"
 import { SelectNative } from "@/components/ui/select-native"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEmpleados } from "@/hooks/use-empleados"
-import { useAssignConversation, useLeadEtiquetaMutation } from "@/hooks/use-lead-actions"
+import { useAssignConversation, useLeadEtiquetaMutation, useReactivateBot } from "@/hooks/use-lead-actions"
 import { useNow } from "@/hooks/use-now"
 import { useLead } from "@/hooks/use-leads"
 import { ALL_ETIQUETAS, displayNameFor, etiquetaLabel, initialsFor, stageColorClass, stageLabel } from "@/lib/lead-format"
@@ -20,6 +20,7 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
   const { data: empleados } = useEmpleados()
   const assignMutation = useAssignConversation(leadId)
   const etiquetaMutation = useLeadEtiquetaMutation(leadId)
+  const reactivateBotMutation = useReactivateBot(leadId)
   const now = useNow()
   const navigate = useNavigate()
   const location = useLocation()
@@ -110,6 +111,29 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
             <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", windowStatus.isOpen ? "bg-emerald-500" : "bg-muted-foreground/50")} />
             {windowStatus.label}
           </span>
+
+          {/* Urgente, Paso 0 aprobado: el bot dejó de responder en este
+              hilo (un humano ya intervino) — visible siempre que esté
+              pausado, no solo cuando el usuario actual lo pausó. Única
+              forma de que vuelva a hablar es este botón. */}
+          {lead.bot_paused && (
+            <Badge
+              variant="outline"
+              className="gap-1.5 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+            >
+              <Bot className="h-3 w-3" />
+              Bot pausado
+              <Button
+                variant="ghost"
+                size="sm"
+                className="-mr-1.5 h-5 px-1.5 text-[11px] text-amber-700 hover:bg-amber-500/15 dark:text-amber-400"
+                disabled={reactivateBotMutation.isPending}
+                onClick={() => reactivateBotMutation.mutate()}
+              >
+                Reactivar bot
+              </Button>
+            </Badge>
+          )}
 
           <SelectNative
             className="ml-auto w-auto max-w-[170px]"
