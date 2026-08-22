@@ -7,6 +7,10 @@ export interface CrmMe {
   crm_usuario_id: number
   crm_rol: CrmRol
   activo: boolean
+  // Fase 2.9: clave pública VAPID, no secreta — el navegador la necesita
+  // para pushManager.subscribe(). Viaja acá para no sumar un endpoint
+  // aparte solo para una constante.
+  vapid_public_key: string
 }
 
 export interface CrmLoginResponse {

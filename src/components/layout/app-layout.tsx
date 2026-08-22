@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom"
+import { NotificationsButton } from "@/components/layout/notifications-button"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 
@@ -17,6 +18,7 @@ export function AppLayout() {
         <span className="text-sm font-semibold tracking-tight">WAM CRM</span>
         {user && (
           <div className="flex items-center gap-2">
+            <NotificationsButton />
             <div className="text-right leading-tight">
               <p className="text-sm font-medium">{user.username}</p>
               <p className="text-xs text-muted-foreground">{ROL_LABEL[user.crm_rol] ?? user.crm_rol}</p>
