@@ -1,5 +1,5 @@
-import { ChevronUp, Loader2 } from "lucide-react"
-import { useEffect, useMemo, useRef } from "react"
+import { ArrowDown, ChevronUp, Loader2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ThreadMessageRun } from "@/components/thread/thread-message-bubble"
 import { ThreadComposer } from "@/components/thread/thread-composer"
 import { ThreadHeader } from "@/components/thread/thread-header"
@@ -8,7 +8,7 @@ import { ThreadSeparator } from "@/components/thread/thread-separator"
 import { ThreadEmpty, ThreadError, ThreadSkeleton } from "@/components/thread/thread-states"
 import { Button } from "@/components/ui/button"
 import { useMarkLeadRead } from "@/hooks/use-lead-actions"
-import { useLeadThread } from "@/hooks/use-lead-thread"
+import { useLeadThread, usePollNewMessages } from "@/hooks/use-lead-thread"
 import { useLead } from "@/hooks/use-leads"
 import { useNow } from "@/hooks/use-now"
 import { useSendMessage } from "@/hooks/use-send-message"
@@ -88,6 +88,11 @@ function buildThreadItems(messagesAsc: ThreadMessage[]): ThreadItem[] {
   return items
 }
 
+// "Está al final" se trata con margen, no con scrollTop exacto — unos
+// pocos px de diferencia (redondeo, la barra de scroll del navegador) no
+// deberían tratarse como "está leyendo mensajes viejos".
+const NEAR_BOTTOM_PX = 80
+
 export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: () => void }) {
   const thread = useLeadThread(leadId)
   const { data: lead } = useLead(leadId)
@@ -97,16 +102,29 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
   const prevScrollHeightRef = useRef<number | null>(null)
   const pendingCountRef = useRef(0)
   const markRead = useMarkLeadRead(leadId)
+  // Fase 2.11.1: seteado por el poll de mensajes nuevos cuando el usuario
+  // ya estaba al final — el efecto de abajo (dependiente de
+  // messagesAsc.length) lo consume una vez que el DOM ya creció.
+  const scrollToBottomPendingRef = useRef(false)
+  const [newMessagesBelow, setNewMessagesBelow] = useState(0)
 
   // Fase 2.11, Paso 0 aprobado: inmediato al abrir el hilo, sin retardo
   // — este componente ya se remonta por lead (key={selectedLeadId} en
-  // bandeja-page.tsx), así que un solo efecto en el mount alcanza, sin
-  // depender de si el lead ya está "leído" o no (marcar de más es
-  // inocuo, el punto azul de "esperando respuesta" no depende de esto).
+  // bandeja-page.tsx), así que un solo efecto alcanza, sin depender de si
+  // el lead ya está "leído" o no (marcar de más es inocuo, el punto azul
+  // de "esperando respuesta" no depende de esto).
+  //
+  // Fase 2.11.1, Paso 0 aprobado: además de leadId, depende de
+  // lead?.last_inbound_at — sin esto, un mensaje nuevo del MISMO lead con
+  // el hilo ya abierto nunca volvía a marcar leído, porque el componente
+  // no se remonta (key=leadId no cambia). Guardado con "if (!lead) return"
+  // para no disparar una vez con last_inbound_at todavía undefined y otra
+  // cuando useLead resuelve — se espera a tener el dato real.
   useEffect(() => {
+    if (!lead) return
     markRead.mutate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [leadId])
+  }, [leadId, lead?.last_inbound_at])
 
   const messagesAsc = useMemo(() => {
     // Cada página viene más-reciente-primero y las páginas se piden de más
@@ -116,6 +134,21 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
     const pages = thread.data?.pages ?? []
     return pages.flatMap((page) => page.results).reverse()
   }, [thread.data])
+
+  const latestMessageId = messagesAsc.length > 0 ? messagesAsc[messagesAsc.length - 1].id : null
+
+  // Fase 2.11.1, Paso 0 aprobado: como WhatsApp — si ya estaba al final,
+  // lo sigue mostrando; si estaba leyendo más arriba, no le mueve el
+  // scroll y en cambio suma al indicador "N mensajes nuevos".
+  usePollNewMessages(leadId, latestMessageId, (incoming) => {
+    const el = containerRef.current
+    const atBottom = !el || el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX
+    if (atBottom) {
+      scrollToBottomPendingRef.current = true
+    } else {
+      setNewMessagesBelow((n) => n + incoming.length)
+    }
+  })
 
   const items = useMemo(() => buildThreadItems(messagesAsc), [messagesAsc])
 
@@ -149,6 +182,20 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
     pendingCountRef.current = pending.length
   }, [pending.length])
 
+  // Fase 2.11.1: el poll de mensajes nuevos marcó "estaba al final" antes
+  // de que el DOM creciera (usePollNewMessages corre el chequeo de scroll
+  // en el momento del merge, no después) — este efecto reacciona una vez
+  // que messagesAsc ya refleja el mensaje nuevo y el navegador terminó de
+  // pintarlo, ahí sí hay un scrollHeight nuevo al cual llevar la vista.
+  // No compite con el efecto de "cargar anteriores" de arriba: ese solo
+  // actúa si prevScrollHeightRef está seteado, que acá nunca lo está.
+  useEffect(() => {
+    if (scrollToBottomPendingRef.current && containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
+      scrollToBottomPendingRef.current = false
+    }
+  }, [messagesAsc.length])
+
   const handleLoadOlder = () => {
     if (containerRef.current) {
       prevScrollHeightRef.current = containerRef.current.scrollHeight
@@ -156,46 +203,72 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
     thread.fetchNextPage()
   }
 
+  const handleJumpToNewMessages = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight
+    }
+    setNewMessagesBelow(0)
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <ThreadHeader leadId={leadId} onBack={onBack} />
 
-      <div ref={containerRef} className="flex-1 overflow-y-auto px-3 py-3">
-        {thread.isLoading ? (
-          <ThreadSkeleton />
-        ) : thread.isError ? (
-          <ThreadError onRetry={() => thread.refetch()} />
-        ) : (
-          <>
-            {thread.hasNextPage && (
-              <div className="flex justify-center pb-3">
-                <Button variant="outline" size="sm" onClick={handleLoadOlder} disabled={thread.isFetchingNextPage}>
-                  {thread.isFetchingNextPage ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <ChevronUp className="h-3.5 w-3.5" />
+      <div className="relative min-h-0 flex-1">
+        <div ref={containerRef} className="h-full overflow-y-auto px-3 py-3">
+          {thread.isLoading ? (
+            <ThreadSkeleton />
+          ) : thread.isError ? (
+            <ThreadError onRetry={() => thread.refetch()} />
+          ) : (
+            <>
+              {thread.hasNextPage && (
+                <div className="flex justify-center pb-3">
+                  <Button variant="outline" size="sm" onClick={handleLoadOlder} disabled={thread.isFetchingNextPage}>
+                    {thread.isFetchingNextPage ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    )}
+                    Cargar anteriores
+                  </Button>
+                </div>
+              )}
+              {items.length === 0 && pending.length === 0 ? (
+                <ThreadEmpty />
+              ) : (
+                <div className="flex min-w-0 flex-col gap-1">
+                  {items.map((item) =>
+                    item.type === "separator" ? (
+                      <ThreadSeparator key={item.key} label={item.label} muted={item.muted} />
+                    ) : (
+                      <ThreadMessageRun key={item.key} messages={item.messages} />
+                    )
                   )}
-                  Cargar anteriores
-                </Button>
-              </div>
-            )}
-            {items.length === 0 && pending.length === 0 ? (
-              <ThreadEmpty />
-            ) : (
-              <div className="flex flex-col gap-1">
-                {items.map((item) =>
-                  item.type === "separator" ? (
-                    <ThreadSeparator key={item.key} label={item.label} muted={item.muted} />
-                  ) : (
-                    <ThreadMessageRun key={item.key} messages={item.messages} />
-                  )
-                )}
-                {pending.map((p) => (
-                  <ThreadPendingBubble key={p.localId} pending={p} onRetry={retry} onDismiss={dismiss} />
-                ))}
-              </div>
-            )}
-          </>
+                  {pending.map((p) => (
+                    <ThreadPendingBubble key={p.localId} pending={p} onRetry={retry} onDismiss={dismiss} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Fase 2.11.1, Paso 0 aprobado: mismo criterio que WhatsApp — si
+            el usuario está leyendo mensajes viejos, un mensaje nuevo no
+            le mueve el scroll solo; este botón flotante es la forma de
+            bajar a propósito. */}
+        {newMessagesBelow > 0 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+            <Button
+              size="sm"
+              className="pointer-events-auto gap-1.5 rounded-full shadow-md"
+              onClick={handleJumpToNewMessages}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+              {newMessagesBelow === 1 ? "1 mensaje nuevo" : `${newMessagesBelow} mensajes nuevos`}
+            </Button>
+          </div>
         )}
       </div>
 

@@ -60,11 +60,16 @@ export function useArchivedScopeLeads(q: string) {
 // Fase 2.2: el hilo necesita los datos del lead (nombre, teléfono, stage)
 // incluso al entrar directo por /bandeja/:leadId (recarga de página), sin
 // depender de que la lista ya esté cargada en memoria.
+// Fase 2.11.1, Paso 0 aprobado: mismo polling que las listas — sin esto,
+// el panel del hilo abierto queda ciego a que llegó un mensaje nuevo
+// (last_inbound_at) hasta que el usuario sale y vuelve a entrar, aunque
+// la lista de al lado ya lo sepa por su propio polling.
 export function useLead(leadId: number | null) {
   return useQuery({
     queryKey: ["lead", leadId],
     queryFn: () => fetchLead(leadId as number),
     enabled: leadId !== null,
     staleTime: 30_000,
+    ...UNREAD_POLL_OPTIONS,
   })
 }

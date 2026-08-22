@@ -44,7 +44,12 @@ export function ThreadMessageRun({ messages }: { messages: ThreadMessage[] }) {
                 <div
                   key={message.id}
                   className={cn(
-                    "rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap break-words",
+                    // wrap-anywhere (overflow-wrap:anywhere), no solo
+                    // break-words (overflow-wrap:break-word): break-word
+                    // no reduce el min-content en contextos flex, así que
+                    // una URL sin espacios sigue empujando el ancho del
+                    // globo/contenedor aunque visualmente "wrapee" (Bug 2).
+                    "rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere",
                     !isOut && "rounded-bl-sm bg-muted text-foreground",
                     isOut && isBot && "rounded-br-sm bg-primary/10 text-foreground",
                     isOut && !isBot && "rounded-br-sm bg-primary text-primary-foreground"

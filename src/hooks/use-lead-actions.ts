@@ -139,5 +139,10 @@ export function useMarkLeadRead(leadId: number) {
   return useMutation({
     mutationFn: () => markLeadRead(leadId),
     onSuccess: invalidate,
+    // Sin retry (default de las mutations), un solo hiccup de red en el
+    // momento de abrir el hilo deja el lead "no leído" para siempre, sin
+    // ningún otro mecanismo que lo vuelva a intentar (Bug 1, reportado en
+    // producción).
+    retry: 2,
   })
 }

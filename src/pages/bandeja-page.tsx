@@ -208,7 +208,11 @@ export function BandejaPage() {
         </div>
       </div>
 
-      <div className={cn("h-full min-h-0 flex-1", (!hasSelection || fichaOpen) && "hidden md:block")}>
+      {/* min-w-0: sin esto, un mensaje con una cadena larga sin espacios
+          (ej. un link) infla el min-width automático de este flex item más
+          allá del ancho real disponible, y en mobile empuja los globos OUT
+          fuera del viewport (Bug 2, reportado en producción). */}
+      <div className={cn("h-full min-h-0 min-w-0 flex-1", (!hasSelection || fichaOpen) && "hidden md:block")}>
         {selectedLeadId !== null ? (
           // key=leadId: fuerza remount al cambiar de lead — resetea de
           // una el scroll del hilo y los mensajes "enviando"/con error en
