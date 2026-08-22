@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api-client"
-import type { EtiquetaSeguimiento, Lead, LeadStage, LeadUpdatePayload, PaginatedResponse } from "@/lib/types"
+import type { EtiquetaSeguimiento, Lead, LeadStage, LeadUpdatePayload, MotivoPerdida, PaginatedResponse } from "@/lib/types"
 
 export type LeadsScope = "all" | "archived" | "handoff"
 
@@ -48,4 +48,42 @@ export function updateLead(leadId: number, patch: LeadUpdatePayload): Promise<Le
 
 export function setLeadStage(leadId: number, stage: LeadStage): Promise<{ ok: boolean; stage: LeadStage }> {
   return apiFetch(`/api/sales/leads/${leadId}/set-stage/`, { method: "POST", body: { stage } })
+}
+
+// Fase 2.8: archivar/desarchivar TOCA TODAS las conversaciones no
+// eliminadas del lead a la vez (ver sales_ai/views.py
+// _set_lead_conversations_archived) — no solo la actual. Un lead con
+// historial de conversaciones viejas necesita eso para desaparecer de
+// Pendientes/Todos de verdad, no solo de la vista superficial.
+export function archiveLead(leadId: number): Promise<{ ok: boolean; archived: boolean; conversations_affected: number }> {
+  return apiFetch(`/api/sales/leads/${leadId}/archive/`, { method: "POST" })
+}
+
+export function unarchiveLead(leadId: number): Promise<{ ok: boolean; archived: boolean; conversations_affected: number }> {
+  return apiFetch(`/api/sales/leads/${leadId}/unarchive/`, { method: "POST" })
+}
+
+// motivoDetalle solo se manda (y solo importa) cuando motivo es "OTRO" —
+// el backend lo exige en ese caso y lo ignora en cualquier otro.
+export function markLeadLost(
+  leadId: number,
+  motivo: MotivoPerdida,
+  motivoDetalle?: string
+): Promise<{ ok: boolean; stage: LeadStage; motivo_perdida: MotivoPerdida; motivo_perdida_detalle: string }> {
+  return apiFetch(`/api/sales/leads/${leadId}/mark-lost/`, {
+    method: "POST",
+    body: { motivo, motivo_detalle: motivoDetalle ?? "" },
+  })
+}
+
+// Vuelve a PITCH y limpia motivo_perdida/motivo_perdida_detalle (mismo
+// punto de recuperación que reactivar desde OPTED_OUT).
+export function reopenLead(leadId: number): Promise<{ ok: boolean; stage: LeadStage }> {
+  return apiFetch(`/api/sales/leads/${leadId}/reopen/`, { method: "POST" })
+}
+
+// ADMIN_CRM only (403 para el resto) — soft-delete propio del Lead, sin
+// undo desde la UI.
+export function deleteLead(leadId: number): Promise<{ ok: boolean; deleted: boolean }> {
+  return apiFetch(`/api/sales/leads/${leadId}/delete/`, { method: "POST" })
 }

@@ -1,22 +1,61 @@
 import { BadgeCheck, UserRoundX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { ageColorClass, displayNameFor, etiquetaLabel, formatRelativeTime, initialsFor, stageColorClass } from "@/lib/lead-format"
+import { LeadActionsMenu } from "@/components/leads/lead-actions-menu"
+import {
+  ageColorClass,
+  displayNameFor,
+  etiquetaLabel,
+  formatRelativeTime,
+  initialsFor,
+  motivoPerdidaLabel,
+  stageColorClass,
+} from "@/lib/lead-format"
 import type { Lead } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
-export function LeadRow({ lead, isSelected, onClick }: { lead: Lead; isSelected?: boolean; onClick?: () => void }) {
+// Fase 2.8: isArchived viene del padre (calculado por la tab activa, ver
+// bandeja-page.tsx), no de un campo propio del lead en esta lista — en
+// Pendientes/Míos/Todos nunca hay un lead archivado (el scope los saca a
+// todos), en Archivados siempre lo hay, así que no hace falta pedirlo por
+// lead.
+export function LeadRow({
+  lead,
+  isSelected,
+  isArchived,
+  onClick,
+}: {
+  lead: Lead
+  isSelected?: boolean
+  isArchived: boolean
+  onClick?: () => void
+}) {
   const name = displayNameFor(lead)
   const isPending = lead.last_message_direction === "IN"
   // Defensivo: si el backend desplegado todavía no tiene el fix del
   // serializer (Fase 2.1, Paso 0), este campo viene undefined en vez de [].
   const etiquetas = lead.etiquetas_seguimiento ?? []
+  // Fase 2.8: un lead CLOSED por "marcar como perdido" sigue en Todos,
+  // mostrando el motivo en vez del último mensaje — es lo único que
+  // distingue "perdido con motivo" de cualquier otro CLOSED viejo.
+  const lostReason = lead.stage === "CLOSED" ? motivoPerdidaLabel(lead.motivo_perdida) : ""
 
   return (
-    <button
-      type="button"
+    // role="button", no <button>: el menú de acciones de abajo también
+    // es un botón (radix DropdownMenuTrigger) — un <button> anidado
+    // dentro de otro es HTML inválido y rompe el click del menú en
+    // algunos navegadores.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault()
+          onClick?.()
+        }
+      }}
       className={cn(
-        "flex w-full items-start gap-3 border-b border-border px-3 py-3 text-left hover:bg-muted/60",
+        "flex w-full cursor-pointer items-start gap-3 border-b border-border px-3 py-3 text-left hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-ring",
         isSelected && "bg-muted"
       )}
     >
@@ -59,7 +98,9 @@ export function LeadRow({ lead, isSelected, onClick }: { lead: Lead; isSelected?
           </span>
         </div>
 
-        {lead.last_inbound_text ? (
+        {lostReason ? (
+          <p className="truncate text-sm text-muted-foreground">Perdido — {lostReason}</p>
+        ) : lead.last_inbound_text ? (
           <p className="truncate text-sm text-muted-foreground">{lead.last_inbound_text}</p>
         ) : (
           <p className="truncate text-sm italic text-muted-foreground/60">Sin respuesta del lead</p>
@@ -76,7 +117,7 @@ export function LeadRow({ lead, isSelected, onClick }: { lead: Lead; isSelected?
         )}
       </div>
 
-      <div className="shrink-0 pt-0.5">
+      <div className="flex shrink-0 flex-col items-end gap-1 pt-0.5">
         {lead.assigned_to_name ? (
           <div
             className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold text-secondary-foreground"
@@ -92,7 +133,8 @@ export function LeadRow({ lead, isSelected, onClick }: { lead: Lead; isSelected?
             <UserRoundX className="h-3.5 w-3.5" />
           </div>
         )}
+        <LeadActionsMenu leadId={lead.id} leadName={name} stage={lead.stage} isArchived={isArchived} />
       </div>
-    </button>
+    </div>
   )
 }

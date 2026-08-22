@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { LeadActionsMenu } from "@/components/leads/lead-actions-menu"
 import { SelectNative } from "@/components/ui/select-native"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useEmpleados } from "@/hooks/use-empleados"
@@ -82,6 +83,15 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
         >
           <Info className="h-4 w-4" />
         </Button>
+        {lead && (
+          <LeadActionsMenu
+            leadId={leadId}
+            leadName={name}
+            stage={lead.stage}
+            isArchived={lead.is_archived}
+            onDeleted={onBack}
+          />
+        )}
       </div>
 
       {lead && windowStatus && (

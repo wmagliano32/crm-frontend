@@ -1,4 +1,4 @@
-import type { EtiquetaSeguimiento, LeadStage } from "@/lib/types"
+import type { EtiquetaSeguimiento, LeadStage, MotivoPerdida } from "@/lib/types"
 
 export function formatRelativeTime(iso: string | null): string {
   if (!iso) return ""
@@ -84,4 +84,22 @@ export const ALL_ETIQUETAS = Object.keys(ETIQUETA_LABEL) as EtiquetaSeguimiento[
 
 export function etiquetaLabel(etiqueta: string): string {
   return ETIQUETA_LABEL[etiqueta as EtiquetaSeguimiento] ?? etiqueta
+}
+
+const MOTIVO_PERDIDA_LABEL: Record<MotivoPerdida, string> = {
+  PRECIO: "Precio",
+  COMPETENCIA: "Competencia",
+  MUY_CHICO: "Consorcio muy chico",
+  NO_RESPONDIO: "No respondió",
+  NO_ERA_EL_MOMENTO: "No era el momento",
+  OTRO: "Otro",
+}
+
+// Orden en que se ofrecen en el selector de "Marcar como perdido"
+// (sales_ai.models.MotivoPerdida en el backend).
+export const ALL_MOTIVOS_PERDIDA = Object.keys(MOTIVO_PERDIDA_LABEL) as MotivoPerdida[]
+
+export function motivoPerdidaLabel(motivo: MotivoPerdida | null): string {
+  if (!motivo) return ""
+  return MOTIVO_PERDIDA_LABEL[motivo] ?? motivo
 }

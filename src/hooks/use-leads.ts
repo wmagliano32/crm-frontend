@@ -24,6 +24,17 @@ export function useAllScopeLeads(q: string) {
   })
 }
 
+// Fase 2.8: tab "Archivados" — misma lógica que "Todos", query aparte
+// para poder mostrar su contador desde el arranque igual que las otras
+// tabs, sin esperar a que el usuario la abra.
+export function useArchivedScopeLeads(q: string) {
+  return useQuery({
+    queryKey: ["leads", "archived", q],
+    queryFn: () => fetchLeads({ scope: "archived", q: q || undefined }),
+    staleTime: 30_000,
+  })
+}
+
 // Fase 2.2: el hilo necesita los datos del lead (nombre, teléfono, stage)
 // incluso al entrar directo por /bandeja/:leadId (recarga de página), sin
 // depender de que la lista ya esté cargada en memoria.

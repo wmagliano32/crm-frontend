@@ -36,6 +36,15 @@ export type LeadStage =
   | "OPTED_OUT"
   | "CLOSED"
 
+// Vocabulario cerrado de sales_ai.models.MotivoPerdida (Fase 2.8).
+export type MotivoPerdida =
+  | "PRECIO"
+  | "COMPETENCIA"
+  | "MUY_CHICO"
+  | "NO_RESPONDIO"
+  | "NO_ERA_EL_MOMENTO"
+  | "OTRO"
+
 // GET /api/sales/leads/ — campos confirmados contra producción (Fase 2.1,
 // Paso 0). last_message_direction viene en MAYÚSCULAS ("IN"/"OUT").
 export interface Lead {
@@ -54,6 +63,13 @@ export interface Lead {
   etiquetas_seguimiento: EtiquetaSeguimiento[]
   es_cliente: boolean
   stage: LeadStage
+  // Fase 2.8: obligatorio al marcar el lead como perdido (stage=CLOSED
+  // vía mark-lost) — motivo_perdida_detalle solo tiene contenido cuando
+  // motivo_perdida es "OTRO". Ambos null/"" para leads CLOSED de antes
+  // de esta fase (sin migración de datos que lo invente) y para
+  // cualquier lead que nunca se marcó como perdido.
+  motivo_perdida: MotivoPerdida | null
+  motivo_perdida_detalle: string
   score: number
   last_inbound_at: string | null
   last_outbound_at: string | null
@@ -71,6 +87,9 @@ export interface Lead {
   // FK a User (no a UsuarioCRM) — ver sales_ai/views.py LeadViewSet.get_queryset.
   assigned_to_id: number | null
   assigned_to_name: string | null
+  // Fase 2.8: computado (no un campo propio del modelo) — true cuando
+  // TODAS las conversaciones no eliminadas del lead están archivadas.
+  is_archived: boolean
   // Commit E los agregó al modelo; sumados al serializer en la Fase 2.5.
   // La ficha de cliente completa (consorcios, UF, última liquidación) es
   // una fase aparte — esto es solo lo mínimo para no ocultar el estado.

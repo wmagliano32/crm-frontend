@@ -1,6 +1,6 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export type LeadsTabKey = "pendientes" | "mios" | "todos"
+export type LeadsTabKey = "pendientes" | "mios" | "todos" | "archivados"
 
 interface LeadsTabsProps {
   value: LeadsTabKey
@@ -12,13 +12,14 @@ const TAB_LABEL: Record<LeadsTabKey, string> = {
   pendientes: "Pendientes",
   mios: "Míos",
   todos: "Todos",
+  archivados: "Archivados",
 }
 
 export function LeadsTabs({ value, onChange, counts }: LeadsTabsProps) {
   return (
     <Tabs value={value} onValueChange={(v) => onChange(v as LeadsTabKey)}>
       <TabsList className="w-full">
-        {(["pendientes", "mios", "todos"] as const).map((key) => (
+        {(["pendientes", "mios", "todos", "archivados"] as const).map((key) => (
           <TabsTrigger key={key} value={key} className="flex-1 gap-1 text-xs">
             {TAB_LABEL[key]}
             <span className="text-muted-foreground">{counts[key] ?? "–"}</span>

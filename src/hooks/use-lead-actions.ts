@@ -1,7 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { assignLead, unassignLead } from "@/lib/conversations-api"
-import { addLeadEtiqueta, handoffLead, removeLeadEtiqueta, setLeadStage, updateLead } from "@/lib/leads-api"
-import type { EtiquetaSeguimiento, LeadStage, LeadUpdatePayload } from "@/lib/types"
+import {
+  addLeadEtiqueta,
+  archiveLead,
+  deleteLead,
+  handoffLead,
+  markLeadLost,
+  removeLeadEtiqueta,
+  reopenLead,
+  setLeadStage,
+  unarchiveLead,
+  updateLead,
+} from "@/lib/leads-api"
+import type { EtiquetaSeguimiento, LeadStage, LeadUpdatePayload, MotivoPerdida } from "@/lib/types"
 
 // Asignación/etiquetas/stage se ven tanto en la cabecera del hilo como en
 // la lista de la bandeja (avatar de asignado, pills de etiquetas) —
@@ -67,6 +78,48 @@ export function useUpdateLead(leadId: number) {
     mutationFn: (patch: LeadUpdatePayload) => updateLead(leadId, patch),
     onSuccess: (updatedLead) => {
       queryClient.setQueryData(["lead", leadId], updatedLead)
+      queryClient.invalidateQueries({ queryKey: ["leads"] })
+    },
+  })
+}
+
+// Fase 2.8: archivar mueve al lead de Pendientes/Todos a Archivados (y
+// viceversa al desarchivar) — invalidar TODOS los scopes de la lista,
+// no solo el actual, para que el contador de la tab de al lado también
+// quede correcto sin esperar un refetch manual.
+export function useArchiveLead(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: (archived: boolean) => (archived ? archiveLead(leadId) : unarchiveLead(leadId)),
+    onSuccess: invalidate,
+  })
+}
+
+export function useMarkLeadLost(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: (params: { motivo: MotivoPerdida; motivoDetalle?: string }) =>
+      markLeadLost(leadId, params.motivo, params.motivoDetalle),
+    onSuccess: invalidate,
+  })
+}
+
+export function useReopenLead(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: () => reopenLead(leadId),
+    onSuccess: invalidate,
+  })
+}
+
+// Sin invalidación de ["lead", leadId]: el lead eliminado deja de
+// existir para este usuario (404 en cualquier GET posterior) — solo
+// hace falta que la lista deje de mostrarlo.
+export function useDeleteLead(leadId: number) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => deleteLead(leadId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] })
     },
   })

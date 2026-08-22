@@ -10,7 +10,7 @@ import { LeadsTabs, type LeadsTabKey } from "@/components/leads/leads-tabs"
 import { LeadThreadPanel } from "@/components/thread/lead-thread-panel"
 import { Input } from "@/components/ui/input"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
-import { useAllScopeLeads, useDefaultScopeLeads } from "@/hooks/use-leads"
+import { useAllScopeLeads, useArchivedScopeLeads, useDefaultScopeLeads } from "@/hooks/use-leads"
 import { useAuth } from "@/lib/auth-context"
 import { displayNameFor } from "@/lib/lead-format"
 import type { Lead } from "@/lib/types"
@@ -86,9 +86,11 @@ export function BandejaPage() {
 
   const defaultScope = useDefaultScopeLeads(debouncedQuery)
   const allScope = useAllScopeLeads(debouncedQuery)
+  const archivedScope = useArchivedScopeLeads(debouncedQuery)
 
   const defaultLeads = useMemo(() => defaultScope.data?.results ?? [], [defaultScope.data])
   const allLeads = useMemo(() => allScope.data?.results ?? [], [allScope.data])
+  const archivedLeads = useMemo(() => archivedScope.data?.results ?? [], [archivedScope.data])
 
   const segmentDefaultLeads = useMemo(
     () => defaultLeads.filter((lead) => lead.es_cliente === isClienteSegment),
@@ -97,6 +99,10 @@ export function BandejaPage() {
   const segmentAllLeads = useMemo(
     () => allLeads.filter((lead) => lead.es_cliente === isClienteSegment),
     [allLeads, isClienteSegment]
+  )
+  const segmentArchivedLeads = useMemo(
+    () => archivedLeads.filter((lead) => lead.es_cliente === isClienteSegment),
+    [archivedLeads, isClienteSegment]
   )
 
   const pendientes = useMemo(
@@ -111,14 +117,19 @@ export function BandejaPage() {
     () => (isClienteSegment ? [...segmentAllLeads].sort(byClientDefaultOrder) : segmentAllLeads),
     [segmentAllLeads, isClienteSegment]
   )
+  const archivados = useMemo(
+    () => (isClienteSegment ? [...segmentArchivedLeads].sort(byClientDefaultOrder) : segmentArchivedLeads),
+    [segmentArchivedLeads, isClienteSegment]
+  )
 
-  const rows = tab === "pendientes" ? pendientes : tab === "mios" ? mios : todos
-  const activeQueryResult = tab === "todos" ? allScope : defaultScope
+  const rows = tab === "pendientes" ? pendientes : tab === "mios" ? mios : tab === "archivados" ? archivados : todos
+  const activeQueryResult = tab === "todos" ? allScope : tab === "archivados" ? archivedScope : defaultScope
 
   const counts = {
     pendientes: defaultScope.data ? pendientes.length : undefined,
     mios: defaultScope.data ? mios.length : undefined,
     todos: allScope.data ? todos.length : undefined,
+    archivados: archivedScope.data ? archivados.length : undefined,
   }
   const segmentCounts = {
     prospectos: allScope.data ? allLeads.filter((lead) => !lead.es_cliente).length : undefined,
@@ -172,6 +183,7 @@ export function BandejaPage() {
                 key={lead.id}
                 lead={lead}
                 isSelected={lead.id === selectedLeadId}
+                isArchived={tab === "archivados"}
                 onClick={() => navigate(`/bandeja/${lead.id}${location.search}`)}
               />
             ))
@@ -210,5 +222,6 @@ function emptyMessageFor(tab: LeadsTabKey, segment: LeadsSegment, hasQuery: bool
   const quien = segment === "clientes" ? "clientes" : "prospectos"
   if (tab === "pendientes") return `No hay ${quien} pendientes. Buen trabajo.`
   if (tab === "mios") return `Todavía no tenés ${quien} asignados.`
+  if (tab === "archivados") return `No hay ${quien} archivados.`
   return `No hay ${quien} para mostrar.`
 }
