@@ -13,6 +13,26 @@ export class ApiError extends Error {
   }
 }
 
+// Fase 2.12: los 400 de MeetingViewSet.create/cancel devuelven
+// {"notificar": "texto claro"} o {"lead_id": "not found"} en vez de
+// {"detail": ...} — apiFetch solo promueve "detail" a err.message, así
+// que estos quedan solo en err.data. Helper genérico para mostrar el
+// primer mensaje de validación legible, sin acoplarse a un nombre de
+// campo puntual (sirve para cualquier ValidationError de DRF, no solo
+// meetings).
+export function apiErrorMessage(err: unknown, fallback = "Ocurrió un error inesperado."): string {
+  if (err instanceof ApiError) {
+    if (err.data && typeof err.data === "object") {
+      for (const value of Object.values(err.data as Record<string, unknown>)) {
+        if (typeof value === "string") return value
+        if (Array.isArray(value) && typeof value[0] === "string") return value[0]
+      }
+    }
+    if (err.message) return err.message
+  }
+  return fallback
+}
+
 // Se dispara cuando el refresh token también falló (expiró o es inválido):
 // no hay forma de recuperar la sesión, hay que volver a loguearse. La
 // escucha AuthProvider (src/lib/auth-context.tsx) para limpiar el estado y

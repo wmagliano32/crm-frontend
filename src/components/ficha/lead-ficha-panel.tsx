@@ -1,10 +1,13 @@
 import { BadgeCheck, X } from "lucide-react"
 import { InlineField } from "@/components/ficha/inline-field"
+import { CreateMeetingDialog } from "@/components/demos/create-meeting-dialog"
+import { MeetingRow } from "@/components/demos/meeting-row"
 import { Badge } from "@/components/ui/badge"
 import { SelectNative } from "@/components/ui/select-native"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSetLeadStage, useUpdateLead } from "@/hooks/use-lead-actions"
 import { useLead } from "@/hooks/use-leads"
+import { useMeetings } from "@/hooks/use-meetings"
 import { stageLabel } from "@/lib/lead-format"
 import type { LeadStage, LeadUpdatePayload } from "@/lib/types"
 
@@ -16,6 +19,7 @@ export function LeadFichaPanel({ leadId, onClose }: { leadId: number; onClose: (
   const { data: lead, isLoading } = useLead(leadId)
   const stageMutation = useSetLeadStage(leadId)
   const updateMutation = useUpdateLead(leadId)
+  const { data: meetings } = useMeetings(leadId)
 
   function save<K extends keyof LeadUpdatePayload>(field: K, value: LeadUpdatePayload[K]) {
     updateMutation.mutate({ [field]: value } as LeadUpdatePayload)
@@ -103,6 +107,24 @@ export function LeadFichaPanel({ leadId, onClose }: { leadId: number; onClose: (
                 onSave={(v) => save("main_pain", v as string)}
               />
               <InlineField label="Score" value={lead.score} type="number" onSave={(v) => save("score", (v as number) ?? 0)} />
+            </section>
+
+            <section className="flex flex-col gap-1">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Demos</h3>
+                <CreateMeetingDialog leadId={leadId} leadEmail={lead.email} />
+              </div>
+              {meetings === undefined ? (
+                <Skeleton className="mx-2 h-16" />
+              ) : meetings.length === 0 ? (
+                <p className="px-2 text-sm text-muted-foreground">Todavía no tiene demos agendadas.</p>
+              ) : (
+                <div className="flex flex-col">
+                  {meetings.map((meeting) => (
+                    <MeetingRow key={meeting.id} meeting={meeting} />
+                  ))}
+                </div>
+              )}
             </section>
 
             {updateMutation.isError && (

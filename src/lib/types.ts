@@ -258,3 +258,47 @@ export interface SendMessageResponse {
   wa: WaSendResult | null
   message: Omit<ThreadMessage, "conversacion_eliminada">
 }
+
+// Fase 2.12: MeetingViewSet (sales_ai/views.py). status es el valor
+// crudo guardado (SCHEDULED/CONFIRMED/CANCELLED, Meeting.STATUS_CHOICES)
+// — display_status es el que hay que mostrar (agrega DONE, derivado de
+// scheduled_at+duration contra "ahora", ya resuelto server-side, mismo
+// criterio que unread en la 2.11). Usar SIEMPRE display_status para la
+// UI, status solo si hace falta el valor "real" guardado en la base.
+export type MeetingStatus = "SCHEDULED" | "CONFIRMED" | "CANCELLED"
+export type MeetingDisplayStatus = MeetingStatus | "DONE"
+
+export interface MeetingLead {
+  id: number
+  name: string
+  phone_e164: string
+  email: string
+  company_name: string
+}
+
+export interface Meeting {
+  id: number
+  scheduled_at: string
+  duration_minutes: number
+  status: MeetingStatus
+  display_status: MeetingDisplayStatus
+  meeting_url: string
+  provider_event_id: string
+  event_html_link: string
+  lead: MeetingLead
+  title: string
+}
+
+export interface CreateMeetingPayload {
+  lead_id: number
+  scheduled_at: string
+  duration_minutes?: number
+  email?: string
+  notificar?: boolean
+}
+
+export interface CreateMeetingResponse {
+  ok: boolean
+  meeting: Meeting
+  wa: WaSendResult | null
+}

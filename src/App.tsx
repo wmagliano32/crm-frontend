@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/layout/app-layout"
 import { ProtectedRoute } from "@/components/layout/protected-route"
 import { AuthProvider } from "@/lib/auth-context"
 import { BandejaPage } from "@/pages/bandeja-page"
+import { DemosPage } from "@/pages/demos-page"
 import { LoginPage } from "@/pages/login-page"
 
 const queryClient = new QueryClient({
@@ -28,6 +29,7 @@ export default function App() {
                 <Route path="/" element={<BandejaPage />} />
                 <Route path="/bandeja/:leadId" element={<BandejaPage />} />
                 <Route path="/bandeja/:leadId/ficha" element={<BandejaPage />} />
+                <Route path="/demos" element={<DemosPage />} />
               </Route>
             </Route>
           </Routes>
