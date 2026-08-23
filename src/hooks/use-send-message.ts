@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query"
 import { useCallback, useState } from "react"
-import { sendLeadMessage, sendLeadTemplate } from "@/lib/conversations-api"
+import { sendLeadMessage, sendLeadMessageWithAttachment, sendLeadTemplate } from "@/lib/conversations-api"
 import type { SendMessageResponse, WaSendResult } from "@/lib/types"
 
 export interface PendingMessage {
@@ -9,10 +9,14 @@ export interface PendingMessage {
   createdAt: string
   status: "sending" | "error"
   errorReason: string | null
+  // Fase 2.10: solo se usa mientras se sube un adjunto (fetch no da
+  // progreso, así que este campo viene de un XHR — ver api-client.ts).
+  // null/undefined en cualquier otro envío.
+  uploadProgress?: number | null
 }
 
 interface PendingRecord extends PendingMessage {
-  request: () => Promise<SendMessageResponse>
+  request: (onProgress: (fraction: number) => void) => Promise<SendMessageResponse>
 }
 
 let pendingIdCounter = 0
@@ -40,12 +44,17 @@ export function useSendMessage(leadId: number) {
   const queryClient = useQueryClient()
 
   const resolvePending = useCallback(
-    async (localId: string, request: () => Promise<SendMessageResponse>) => {
+    async (localId: string, request: (onProgress: (fraction: number) => void) => Promise<SendMessageResponse>) => {
+      const onProgress = (fraction: number) => {
+        setPending((prev) => (prev.some((p) => p.localId === localId) ? prev.map((p) => (p.localId === localId ? { ...p, uploadProgress: fraction } : p)) : prev))
+      }
       try {
-        const resp = await request()
+        const resp = await request(onProgress)
         if (resp.wa && resp.wa.ok === false) {
           const reason = waErrorReason(resp.wa)
-          setPending((prev) => prev.map((p) => (p.localId === localId ? { ...p, status: "error", errorReason: reason } : p)))
+          setPending((prev) =>
+            prev.map((p) => (p.localId === localId ? { ...p, status: "error", errorReason: reason, uploadProgress: null } : p))
+          )
           return
         }
         setPending((prev) => prev.filter((p) => p.localId !== localId))
@@ -53,7 +62,9 @@ export function useSendMessage(leadId: number) {
       } catch {
         setPending((prev) =>
           prev.map((p) =>
-            p.localId === localId ? { ...p, status: "error", errorReason: "No se pudo enviar. Revisá tu conexión." } : p
+            p.localId === localId
+              ? { ...p, status: "error", errorReason: "No se pudo enviar. Revisá tu conexión.", uploadProgress: null }
+              : p
           )
         )
       }
@@ -62,11 +73,11 @@ export function useSendMessage(leadId: number) {
   )
 
   const enqueue = useCallback(
-    (text: string, request: () => Promise<SendMessageResponse>) => {
+    (text: string, request: (onProgress: (fraction: number) => void) => Promise<SendMessageResponse>) => {
       const localId = `pending-${Date.now()}-${pendingIdCounter++}`
       setPending((prev) => [
         ...prev,
-        { localId, text, createdAt: new Date().toISOString(), status: "sending", errorReason: null, request },
+        { localId, text, createdAt: new Date().toISOString(), status: "sending", errorReason: null, uploadProgress: null, request },
       ])
       void resolvePending(localId, request)
     },
@@ -78,6 +89,20 @@ export function useSendMessage(leadId: number) {
       const trimmed = text.trim()
       if (!trimmed) return
       enqueue(trimmed, () => sendLeadMessage(leadId, trimmed))
+    },
+    [leadId, enqueue]
+  )
+
+  // Fase 2.10: mismo mecanismo optimista que send(), pero con progreso de
+  // subida (uploadProgress) porque un archivo puede tardar. text puede
+  // venir vacío -- adjunto solo, el mismo caso que ya soporta el backend
+  // desde el Frente 2. El texto mostrado en la burbuja pendiente cae al
+  // nombre del archivo cuando no hay texto, para no dejar la burbuja vacía.
+  const sendAttachment = useCallback(
+    (text: string, file: File) => {
+      const trimmed = text.trim()
+      const label = trimmed || `📎 ${file.name}`
+      enqueue(label, (onProgress) => sendLeadMessageWithAttachment(leadId, trimmed, file, onProgress))
     },
     [leadId, enqueue]
   )
@@ -95,7 +120,9 @@ export function useSendMessage(leadId: number) {
     (localId: string) => {
       const item = pending.find((p) => p.localId === localId)
       if (!item) return
-      setPending((prev) => prev.map((p) => (p.localId === localId ? { ...p, status: "sending", errorReason: null } : p)))
+      setPending((prev) =>
+        prev.map((p) => (p.localId === localId ? { ...p, status: "sending", errorReason: null, uploadProgress: null } : p))
+      )
       void resolvePending(localId, item.request)
     },
     [pending, resolvePending]
@@ -105,5 +132,5 @@ export function useSendMessage(leadId: number) {
     setPending((prev) => prev.filter((p) => p.localId !== localId))
   }, [])
 
-  return { pending, send, sendTemplate, retry, dismiss }
+  return { pending, send, sendAttachment, sendTemplate, retry, dismiss }
 }

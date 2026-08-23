@@ -1,5 +1,6 @@
-import { Bot, Paperclip } from "lucide-react"
+import { Bot } from "lucide-react"
 import { useMemo } from "react"
+import { ThreadAttachmentPreview } from "@/components/thread/thread-attachment-preview"
 import { deliveryStatusLabel, formatMessageTime, isHumanOutbound } from "@/lib/thread-format"
 import type { ThreadMessage } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -35,7 +36,7 @@ export function ThreadMessageRun({ messages }: { messages: ThreadMessage[] }) {
 
   return (
     <div className={cn("flex", isOut ? "justify-end" : "justify-start", first.conversacion_eliminada && "opacity-50")}>
-      <div className={cn("flex max-w-[min(65%,600px)] flex-col gap-0.5", isOut ? "items-end" : "items-start")}>
+      <div className={cn("flex min-w-0 max-w-[min(65%,600px)] flex-col gap-0.5", isOut ? "items-end" : "items-start")}>
         {subgroups.map((group, groupIndex) => {
           const last = group[group.length - 1]
           return (
@@ -57,18 +58,9 @@ export function ThreadMessageRun({ messages }: { messages: ThreadMessage[] }) {
                 >
                   {message.text}
                   {message.attachments.length > 0 && (
-                    <div className="mt-1.5 flex flex-col gap-1">
+                    <div className={cn("flex min-w-0 flex-col gap-1.5", message.text && "mt-1.5")}>
                       {message.attachments.map((attachment) => (
-                        <a
-                          key={attachment.id}
-                          href={attachment.download_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 rounded-md border border-current/20 bg-background/40 px-2 py-1 text-xs underline-offset-2 hover:underline"
-                        >
-                          <Paperclip className="h-3 w-3 shrink-0" />
-                          <span className="max-w-[200px] truncate">{attachment.file_name || "Adjunto"}</span>
-                        </a>
+                        <ThreadAttachmentPreview key={attachment.id} attachment={attachment} />
                       ))}
                     </div>
                   )}

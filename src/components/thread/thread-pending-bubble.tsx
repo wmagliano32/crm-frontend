@@ -11,18 +11,27 @@ export function ThreadPendingBubble({
   onRetry: (localId: string) => void
   onDismiss: (localId: string) => void
 }) {
+  const showProgress =
+    pending.status === "sending" && typeof pending.uploadProgress === "number" && pending.uploadProgress < 1
+
   return (
     <div className="flex justify-end">
-      <div className="flex max-w-[min(65%,600px)] flex-col items-end gap-0.5">
-        <div
-          className="rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm whitespace-pre-wrap break-words text-primary-foreground opacity-80"
-        >
+      <div className="flex min-w-0 max-w-[min(65%,600px)] flex-col items-end gap-0.5">
+        <div className="rounded-2xl rounded-br-sm bg-primary px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere text-primary-foreground opacity-80">
           {pending.text}
+          {showProgress && (
+            <div className="mt-1.5 h-1 w-full min-w-24 overflow-hidden rounded-full bg-primary-foreground/25">
+              <div
+                className="h-full rounded-full bg-primary-foreground transition-[width]"
+                style={{ width: `${Math.round((pending.uploadProgress ?? 0) * 100)}%` }}
+              />
+            </div>
+          )}
         </div>
         {pending.status === "sending" ? (
           <span className="flex items-center gap-1 px-1 text-[10px] text-muted-foreground">
             <Loader2 className="h-2.5 w-2.5 animate-spin" />
-            Enviando…
+            {showProgress ? `Subiendo… ${Math.round((pending.uploadProgress ?? 0) * 100)}%` : "Enviando…"}
           </span>
         ) : (
           <div className="flex items-center gap-1.5 px-1 text-[10px] text-destructive">

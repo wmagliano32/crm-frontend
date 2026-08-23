@@ -137,3 +137,64 @@ export async function apiFetch<T = unknown>(path: string, options: ApiFetchOptio
   if (response.status === 204) return undefined as T
   return (await response.json()) as T
 }
+
+// Fase 2.10: envío de adjuntos. fetch no expone progreso de subida (no
+// hay onUploadProgress), así que este único caso usa XMLHttpRequest en
+// vez de apiFetch — reutiliza el mismo refresh/401 y ApiError de arriba
+// para no divergir del resto de la app.
+function xhrPost(
+  path: string,
+  form: FormData,
+  accessToken: string | null,
+  onProgress?: (fraction: number) => void
+): Promise<{ status: number; body: unknown }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("POST", `${API_BASE}${path}`)
+    if (accessToken) xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`)
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) onProgress(e.loaded / e.total)
+    }
+    xhr.onload = () => {
+      let body: unknown = null
+      try {
+        body = xhr.responseText ? JSON.parse(xhr.responseText) : null
+      } catch {
+        // sin body JSON, no pasa nada
+      }
+      resolve({ status: xhr.status, body })
+    }
+    xhr.onerror = () => reject(new ApiError(0, null, "No se pudo conectar con el servidor."))
+    xhr.send(form)
+  })
+}
+
+export async function apiFetchMultipart<T = unknown>(
+  path: string,
+  fields: Record<string, string | Blob>,
+  onProgress?: (fraction: number) => void
+): Promise<T> {
+  const form = new FormData()
+  for (const [key, value] of Object.entries(fields)) {
+    form.append(key, value)
+  }
+
+  let { status, body } = await xhrPost(path, form, getAccessToken(), onProgress)
+
+  if (status === 401) {
+    const newAccess = await refreshAccessToken()
+    if (!newAccess) {
+      notifyAuthExpired()
+      throw new ApiError(401, null, "Sesión expirada.")
+    }
+    ;({ status, body } = await xhrPost(path, form, newAccess, onProgress))
+  }
+
+  if (status < 200 || status >= 300) {
+    const message =
+      body && typeof body === "object" && "detail" in body ? String((body as { detail: unknown }).detail) : undefined
+    throw new ApiError(status, body, message)
+  }
+
+  return body as T
+}

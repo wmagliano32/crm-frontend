@@ -97,7 +97,7 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
   const thread = useLeadThread(leadId)
   const { data: lead } = useLead(leadId)
   const now = useNow()
-  const { pending, send, sendTemplate, retry, dismiss } = useSendMessage(leadId)
+  const { pending, send, sendAttachment, sendTemplate, retry, dismiss } = useSendMessage(leadId)
   const containerRef = useRef<HTMLDivElement>(null)
   const prevScrollHeightRef = useRef<number | null>(null)
   const pendingCountRef = useRef(0)
@@ -272,7 +272,9 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
         )}
       </div>
 
-      {lead && <ThreadComposer lead={lead} now={now} onSend={send} onSendTemplate={sendTemplate} />}
+      {lead && (
+        <ThreadComposer lead={lead} now={now} onSend={send} onSendAttachment={sendAttachment} onSendTemplate={sendTemplate} />
+      )}
     </div>
   )
 }

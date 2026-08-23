@@ -1,4 +1,4 @@
-import { apiFetch } from "@/lib/api-client"
+import { apiFetch, apiFetchMultipart } from "@/lib/api-client"
 import type { Conversation, SalesTemplate, SendMessageResponse } from "@/lib/types"
 
 export function fetchTemplates(): Promise<SalesTemplate[]> {
@@ -46,4 +46,20 @@ export function sendLeadMessage(leadId: number, text: string): Promise<SendMessa
     method: "POST",
     body: { text },
   })
+}
+
+// Fase 2.10: mismo endpoint que sendLeadMessage, pero multipart — el
+// backend acepta "attachment" como archivo (MultiPartParser, ver Paso 0
+// de la fase). "text" puede venir vacío (adjunto solo).
+export function sendLeadMessageWithAttachment(
+  leadId: number,
+  text: string,
+  file: File,
+  onProgress?: (fraction: number) => void
+): Promise<SendMessageResponse> {
+  return apiFetchMultipart<SendMessageResponse>(
+    `/api/sales/leads/${leadId}/send/`,
+    { text, attachment: file },
+    onProgress
+  )
 }
