@@ -21,7 +21,25 @@ export default defineConfig({
       injectManifest: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
       },
-      registerType: "autoUpdate",
+      // Fase 3.5, diseño aprobado: "autoUpdate" activaba el SW nuevo en
+      // segundo plano apenas terminaba de instalar (sw.ts tenía
+      // self.skipWaiting() sin condición) -- el registerSW.js plano que
+      // esto inyectaba por default no tenía ninguna lógica reactiva
+      // arriba, así que una pestaña abierta desde antes del deploy se
+      // quedaba con el JS viejo en memoria por días, sin ningún aviso.
+      // "prompt" es el modo que vite-plugin-pwa espera para poder
+      // mostrar un botón "Actualizar": el SW nuevo se queda "esperando"
+      // (sw.ts ya no hace skipWaiting solo) hasta que el cliente lo pide
+      // explícitamente -- ver src/hooks/use-pwa-update.ts (needRefresh/
+      // updateServiceWorker vía virtual:pwa-register/react). OJO: con
+      // "autoUpdate", needRefresh/onNeedRefresh NUNCA se disparan (es
+      // "prompt" el único modo que los expone) -- no alcanza con
+      // agregar el hook, hay que cambiar este modo también.
+      registerType: "prompt",
+      // injectRegister:false porque el registro pasa a ser manual, vía
+      // el hook de arriba, no el registerSW.js auto-inyectado (que no
+      // tiene forma de exponer needRefresh a React).
+      injectRegister: false,
       includeAssets: ["favicon.svg"],
       manifest: {
         name: "WAM CRM",

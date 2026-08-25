@@ -14,7 +14,25 @@ declare const self: ServiceWorkerGlobalScope & {
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from "workbox-precaching"
 import { NavigationRoute, registerRoute } from "workbox-routing"
 
-self.skipWaiting()
+// Fase 3.5, diseño aprobado: antes esto era self.skipWaiting() sin
+// condición -- una versión nueva se activaba sola apenas terminaba de
+// instalar, sin importar si había una pestaña vieja abierta. Eso hacía
+// que workbox-window nunca viera un SW genuinamente "esperando" al que
+// mostrarle un aviso al usuario (ver useRegisterSW/registerType:"prompt"
+// en vite.config.ts) -- el update pasaba en silencio en segundo plano,
+// mientras el JS ya cargado en memoria de una pestaña abierta seguía
+// siendo el viejo por días. Ahora solo se salta la espera cuando el
+// cliente lo pide explícitamente (el botón "Actualizar" del banner,
+// vía updateServiceWorker() -> Workbox.messageSkipWaiting(), mismo
+// contrato { type: "SKIP_WAITING" } que usa workbox-window). Una
+// instalación de cero (sin SW previo controlando la página) activa
+// igual sin esto -- el navegador nunca deja un SW "esperando" cuando no
+// hay nada a lo que no interrumpir.
+self.addEventListener("message", (event: ExtendableMessageEvent) => {
+  if (event.data && (event.data as { type?: string }).type === "SKIP_WAITING") {
+    self.skipWaiting()
+  }
+})
 self.addEventListener("activate", () => {
   self.clients.claim()
 })

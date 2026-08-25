@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter, Route, Routes } from "react-router-dom"
 import { AppLayout } from "@/components/layout/app-layout"
 import { ProtectedRoute } from "@/components/layout/protected-route"
+import { PwaUpdateBanner } from "@/components/layout/pwa-update-banner"
 import { AuthProvider } from "@/lib/auth-context"
 import { ThemeProvider } from "@/lib/theme-context"
 import { BandejaPage } from "@/pages/bandeja-page"
@@ -37,6 +38,10 @@ export default function App() {
             </Routes>
           </AuthProvider>
         </BrowserRouter>
+        {/* Fase 3.5, diseño aprobado: fuera del árbol de rutas a propósito
+            -- tiene que verse en cualquier pantalla, login incluido, no
+            solo dentro de AppLayout. */}
+        <PwaUpdateBanner />
       </QueryClientProvider>
     </ThemeProvider>
   )
