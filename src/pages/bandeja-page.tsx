@@ -26,31 +26,25 @@ function isPendiente(lead: Lead): boolean {
   return lead.assigned_to_id === null && lead.stage !== "CLOSED" && lead.stage !== "OPTED_OUT"
 }
 
-// Mismo campo que ahora se muestra y colorea en cada fila (last_inbound_at):
-// si se ordenara por otra cosa, los rojos no quedarían arriba de verdad. Un
-// lead que nunca escribió (last_inbound_at null) se trata como el caso más
-// frío posible — el bot le habló y no hay ni una respuesta — así que va
-// primero, antes que cualquier fecha real por vieja que sea.
-function byOldestLastInboundFirst(a: Lead, b: Lead): number {
-  const at = a.last_inbound_at ? new Date(a.last_inbound_at).getTime() : Number.NEGATIVE_INFINITY
-  const bt = b.last_inbound_at ? new Date(b.last_inbound_at).getTime() : Number.NEGATIVE_INFINITY
-  return at - bt
-}
-
-// Clientes (Fase 2.6): "el más olvidado primero" no sirve como default
-// cuando TODOS están igual de vacíos (los importados nunca escribieron al
-// número nuevo, last_inbound_at null en los 38). Los que SÍ ya escribieron
-// van primero, con el mismo criterio de urgencia que un prospecto — dejan
-// de estar "vacíos" en cuanto mandan un mensaje real y merecen la misma
-// prioridad. Los que todavía no escribieron van después, alfabético por
-// nombre — así la lista se puede recorrer/buscar mientras no hay actividad
-// real que priorizar, en vez de quedar en un orden arbitrario de carga.
-function byClientDefaultOrder(a: Lead, b: Lead): number {
-  const aWrote = a.last_inbound_at !== null
-  const bWrote = b.last_inbound_at !== null
-  if (aWrote !== bWrote) return aWrote ? -1 : 1
-  if (aWrote && bWrote) return byOldestLastInboundFirst(a, b)
-  return displayNameFor(a).localeCompare(displayNameFor(b), "es", { sensitivity: "base" })
+// Fase 3.4, diseño aprobado: recency-first en los dos segmentos, todas las
+// tabs -- el backend ya ordena por -last_inbound_at con nulls last
+// (LeadViewSet.get_queryset), así que filter() por segmento preserva ese
+// orden para el bucket "escribió" sin necesidad de reordenarlo acá.
+// Lo único que queda del lado del cliente es la posición de "nunca
+// escribió", porque es asimétrica por segmento y el backend no conoce el
+// segmento (es_cliente se filtra 100% en el frontend):
+//   - Prospectos: primero (alguien le debe un primer mensaje).
+//   - Clientes: último (una relación existente en silencio no urge).
+// Alfabético entre sí dentro de ese bucket, para no dejarlos en el orden
+// arbitrario de llegada de la página.
+function reorderNeverWrote(leads: Lead[], neverWroteFirst: boolean): Lead[] {
+  const wrote: Lead[] = []
+  const neverWrote: Lead[] = []
+  for (const lead of leads) {
+    ;(lead.last_inbound_at ? wrote : neverWrote).push(lead)
+  }
+  neverWrote.sort((a, b) => displayNameFor(a).localeCompare(displayNameFor(b), "es", { sensitivity: "base" }))
+  return neverWroteFirst ? [...neverWrote, ...wrote] : [...wrote, ...neverWrote]
 }
 
 export function BandejaPage() {
@@ -95,34 +89,25 @@ export function BandejaPage() {
   const archivedLeads = useMemo(() => archivedScope.data?.results ?? [], [archivedScope.data])
 
   const segmentDefaultLeads = useMemo(
-    () => defaultLeads.filter((lead) => lead.es_cliente === isClienteSegment),
+    () => reorderNeverWrote(defaultLeads.filter((lead) => lead.es_cliente === isClienteSegment), !isClienteSegment),
     [defaultLeads, isClienteSegment]
   )
   const segmentAllLeads = useMemo(
-    () => allLeads.filter((lead) => lead.es_cliente === isClienteSegment),
+    () => reorderNeverWrote(allLeads.filter((lead) => lead.es_cliente === isClienteSegment), !isClienteSegment),
     [allLeads, isClienteSegment]
   )
   const segmentArchivedLeads = useMemo(
-    () => archivedLeads.filter((lead) => lead.es_cliente === isClienteSegment),
+    () => reorderNeverWrote(archivedLeads.filter((lead) => lead.es_cliente === isClienteSegment), !isClienteSegment),
     [archivedLeads, isClienteSegment]
   )
 
-  const pendientes = useMemo(
-    () => segmentDefaultLeads.filter(isPendiente).sort(isClienteSegment ? byClientDefaultOrder : byOldestLastInboundFirst),
-    [segmentDefaultLeads, isClienteSegment]
-  )
+  const pendientes = useMemo(() => segmentDefaultLeads.filter(isPendiente), [segmentDefaultLeads])
   const mios = useMemo(
     () => segmentDefaultLeads.filter((lead) => user && lead.assigned_to_id === user.id),
     [segmentDefaultLeads, user]
   )
-  const todos = useMemo(
-    () => (isClienteSegment ? [...segmentAllLeads].sort(byClientDefaultOrder) : segmentAllLeads),
-    [segmentAllLeads, isClienteSegment]
-  )
-  const archivados = useMemo(
-    () => (isClienteSegment ? [...segmentArchivedLeads].sort(byClientDefaultOrder) : segmentArchivedLeads),
-    [segmentArchivedLeads, isClienteSegment]
-  )
+  const todos = segmentAllLeads
+  const archivados = segmentArchivedLeads
 
   const rows = tab === "pendientes" ? pendientes : tab === "mios" ? mios : tab === "archivados" ? archivados : todos
   const activeQueryResult = tab === "todos" ? allScope : tab === "archivados" ? archivedScope : defaultScope

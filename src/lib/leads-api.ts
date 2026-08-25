@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api-client"
-import type { EtiquetaSeguimiento, Lead, LeadStage, LeadUpdatePayload, MotivoPerdida, PaginatedResponse } from "@/lib/types"
+import type { EtiquetaSeguimiento, Lead, LeadInternalNote, LeadStage, LeadUpdatePayload, MotivoPerdida, PaginatedResponse } from "@/lib/types"
 
 export type LeadsScope = "all" | "archived" | "handoff"
 
@@ -106,4 +106,24 @@ export function reactivateBot(leadId: number): Promise<{ ok: boolean; bot_paused
 // hay "desmarcar" manual.
 export function markLeadResolved(leadId: number): Promise<{ ok: boolean; resuelto_at: string }> {
   return apiFetch(`/api/sales/leads/${leadId}/mark-resolved/`, { method: "POST" })
+}
+
+// Fase 3.2, diseño aprobado: notas INTERNAS -- nunca se envían al
+// contacto, nunca pasan por Twilio. Cualquier CRM activo puede leer y
+// crear; editar/borrar una nota puntual está restringido al autor o
+// ADMIN_CRM (chequeo real en el backend, ver LeadViewSet.note_detail).
+export function fetchLeadNotes(leadId: number): Promise<LeadInternalNote[]> {
+  return apiFetch(`/api/sales/leads/${leadId}/notes/`)
+}
+
+export function createLeadNote(leadId: number, text: string): Promise<LeadInternalNote> {
+  return apiFetch(`/api/sales/leads/${leadId}/notes/`, { method: "POST", body: { text } })
+}
+
+export function updateLeadNote(leadId: number, noteId: number, text: string): Promise<LeadInternalNote> {
+  return apiFetch(`/api/sales/leads/${leadId}/notes/${noteId}/`, { method: "PATCH", body: { text } })
+}
+
+export function deleteLeadNote(leadId: number, noteId: number): Promise<void> {
+  return apiFetch(`/api/sales/leads/${leadId}/notes/${noteId}/`, { method: "DELETE" })
 }

@@ -1,4 +1,4 @@
-import { BadgeCheck, UserRoundX } from "lucide-react"
+import { BadgeCheck, StickyNote, UserRoundX } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { LeadActionsMenu } from "@/components/leads/lead-actions-menu"
 import {
@@ -141,8 +141,21 @@ export function LeadRow({
           <p className="truncate text-sm italic text-muted-foreground/60">Sin respuesta del lead</p>
         )}
 
-        {etiquetas.length > 0 && (
-          <div className="mt-1.5 flex flex-wrap gap-1">
+        {(etiquetas.length > 0 || lead.notes_count > 0) && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {/* Fase 3.2, diseño aprobado: indicador de que hay contexto
+                guardado, sin abrir el hilo -- color neutro a propósito,
+                para no competir con el verde de no-leídos ni el azul de
+                "esperando respuesta" (es informativo, no urgente). */}
+            {lead.notes_count > 0 && (
+              <span
+                className="flex items-center gap-1 rounded-full bg-muted px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
+                title={`${lead.notes_count} nota${lead.notes_count === 1 ? "" : "s"} interna${lead.notes_count === 1 ? "" : "s"}`}
+              >
+                <StickyNote className="h-3 w-3" />
+                {lead.notes_count}
+              </span>
+            )}
             {etiquetas.map((etiqueta) => (
               <Badge key={etiqueta} variant="secondary" className="px-1.5 py-0 text-[10px] font-normal">
                 {etiquetaLabel(etiqueta)}

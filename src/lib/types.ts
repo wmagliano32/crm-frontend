@@ -87,6 +87,10 @@ export interface Lead {
   // (mismo criterio que `unread`, anotado en el backend) -- para el
   // badge numerado, no solo el booleano.
   unread_message_count: number
+  // Fase 3.2, diseño aprobado: conteo de notas internas del lead, para
+  // el indicador de la fila -- sin condición de lectura, a diferencia
+  // de unread_message_count.
+  notes_count: number
   // Fase 3.1, diseño aprobado: opuesto de "esperando respuesta" (ver
   // last_message_direction). Compartido por lead, timestamp nullable
   // (no booleano) -- se limpia solo con un mensaje IN nuevo, en el
@@ -130,6 +134,21 @@ export interface Lead {
 export type LeadUpdatePayload = Partial<
   Pick<Lead, "name" | "email" | "company" | "role" | "city" | "consorcios_count" | "units_count" | "current_system" | "main_pain" | "score">
 >
+
+// Fase 3.2, diseño aprobado: notas INTERNAS por lead -- nunca se envían
+// al contacto, nunca pasan por Twilio. author null (SET_NULL en el
+// backend) significa que el usuario que la escribió ya no existe -- el
+// componente que las renderiza tiene que mostrar "Autor eliminado", no
+// un espacio vacío.
+export interface LeadInternalNote {
+  id: number
+  lead: number
+  author: number | null
+  author_name: string
+  text: string
+  created_at: string
+  updated_at: string
+}
 
 export interface PaginatedResponse<T> {
   count: number

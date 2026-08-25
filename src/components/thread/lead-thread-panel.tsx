@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { ThreadMessageRun } from "@/components/thread/thread-message-bubble"
 import { ThreadComposer } from "@/components/thread/thread-composer"
 import { ThreadHeader } from "@/components/thread/thread-header"
+import { LeadNotesPanel } from "@/components/thread/lead-notes-panel"
 import { ThreadPendingBubble } from "@/components/thread/thread-pending-bubble"
 import { ThreadSeparator } from "@/components/thread/thread-separator"
 import { ThreadEmpty, ThreadError, ThreadSkeleton } from "@/components/thread/thread-states"
@@ -225,6 +226,7 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
   return (
     <div className="flex h-full min-h-0 flex-col">
       <ThreadHeader leadId={leadId} onBack={onBack} />
+      <LeadNotesPanel leadId={leadId} />
 
       <div className="relative min-h-0 flex-1">
         <div ref={containerRef} onScroll={handleScroll} className="h-full overflow-y-auto px-3 py-3">
