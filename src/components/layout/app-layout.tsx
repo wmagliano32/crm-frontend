@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom"
 import { NotificationsButton } from "@/components/layout/notifications-button"
+import { ThemeToggleButton } from "@/components/layout/theme-toggle-button"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { cn } from "@/lib/utils"
@@ -44,6 +45,7 @@ export function AppLayout() {
         </div>
         {user && (
           <div className="flex items-center gap-2">
+            <ThemeToggleButton />
             <NotificationsButton />
             <div className="text-right leading-tight">
               <p className="text-sm font-medium">{user.username}</p>

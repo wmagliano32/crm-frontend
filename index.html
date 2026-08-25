@@ -8,6 +8,17 @@
     <meta name="theme-color" content="#0f172a" />
     <meta name="description" content="CRM interno de WAM Soluciones" />
     <title>WAM CRM</title>
+    <script>
+      // Fase 3.1: aplicado ANTES de que React monte, para no mostrar un
+      // flash del tema claro y recién después pasar a oscuro (mismo valor
+      // que lee ThemeProvider en src/lib/theme-context.tsx -- si cambia
+      // la clave o la lógica ahí, hay que actualizar acá también).
+      (function () {
+        var pref = localStorage.getItem("crm_theme") || "system";
+        var isDark = pref === "dark" || (pref === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+        if (isDark) document.documentElement.classList.add("dark");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

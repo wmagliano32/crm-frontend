@@ -7,6 +7,7 @@ import {
   handoffLead,
   markLeadLost,
   markLeadRead,
+  markLeadResolved,
   reactivateBot,
   removeLeadEtiqueta,
   reopenLead,
@@ -154,6 +155,19 @@ export function useReactivateBot(leadId: number) {
   const invalidate = useInvalidateLead(leadId)
   return useMutation({
     mutationFn: () => reactivateBot(leadId),
+    onSuccess: invalidate,
+  })
+}
+
+// Fase 3.1, diseño aprobado: "Marcar como resuelta" -- botón compartido
+// por LeadActionsMenu (fila de la lista y cabecera del hilo), mismo
+// criterio que mark-read (cualquier CRM activo, sin condición). El punto
+// azul de "esperando respuesta" desaparece hasta que llegue un mensaje
+// entrante nuevo (backend, no acá).
+export function useMarkLeadResolved(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: () => markLeadResolved(leadId),
     onSuccess: invalidate,
   })
 }

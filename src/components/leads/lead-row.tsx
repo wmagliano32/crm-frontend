@@ -30,7 +30,11 @@ export function LeadRow({
   onClick?: () => void
 }) {
   const name = displayNameFor(lead)
-  const isPending = lead.last_message_direction === "IN"
+  // Fase 3.1, diseño aprobado: el punto azul de "esperando respuesta" se
+  // apaga también cuando la conversación se marcó resuelta a mano (no
+  // solo cuando el contacto deja de ser el último en hablar) -- el caso
+  // del "gracias" que motivó esto.
+  const isPending = lead.last_message_direction === "IN" && lead.resuelto_at === null
   // Defensivo: si el backend desplegado todavía no tiene el fix del
   // serializer (Fase 2.1, Paso 0), este campo viene undefined en vez de [].
   const etiquetas = lead.etiquetas_seguimiento ?? []
@@ -88,19 +92,43 @@ export function LeadRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-2">
-          {/* Fase 2.11: "no leído" es un indicador NUEVO y distinto del
-              punto azul de arriba (que sigue significando "esperando
-              respuesta", sin cambios) — negrita, mismo criterio visual
-              que WhatsApp/Gmail para un chat sin leer, no otro punto más
-              compitiendo por atención en el avatar. */}
+          {/* Fase 2.11: "no leído" es un indicador distinto del punto azul
+              de arriba ("esperando respuesta") — negrita, mismo criterio
+              visual que WhatsApp/Gmail. Fase 3.1: se suma el badge con
+              conteo (más abajo) como refuerzo del mismo indicador de "no
+              leído" (bold + badge, no dos conceptos distintos) — sigue
+              sin competir con el punto azul, que es una señal aparte y
+              puede estar prendida o apagada en cualquier combinación con
+              esta (leído sin responder, o no leído pero ya resuelto). */}
           <p className={cn("truncate text-sm", lead.unread ? "font-bold" : "font-medium")}>{name}</p>
-          {/* Antigüedad medida desde el último mensaje DEL LEAD
-              (last_inbound_at), no desde el último mensaje cualquiera: si el
-              bot le escribió hace 3 días pero el lead no habla hace 4 meses,
-              lo que importa son los 4 meses. */}
-          <span className={`shrink-0 text-xs ${ageColorClass(lead.last_inbound_at)}`}>
-            {formatRelativeTime(lead.last_inbound_at)}
-          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {/* Antigüedad medida desde el último mensaje DEL LEAD
+                (last_inbound_at), no desde el último mensaje cualquiera: si
+                el bot le escribió hace 3 días pero el lead no habla hace 4
+                meses, lo que importa son los 4 meses. */}
+            <span className={`text-xs ${ageColorClass(lead.last_inbound_at)}`}>
+              {formatRelativeTime(lead.last_inbound_at)}
+            </span>
+            {/* Fase 3.1, diseño aprobado: badge tipo WhatsApp en el espacio
+                que antes quedaba vacío al lado del nombre -- usa el
+                CONTEO real (unread_message_count), no un booleano, así
+                que si no hay número no se muestra nada (evita un círculo
+                vacío que parezca contador y no cuente, pedido explícito).
+                Verde a propósito, distinto del punto azul de abajo -- son
+                dos señales distintas (no leído vs. esperando respuesta) y
+                pueden estar prendidas a la vez (leído sin responder, o no
+                leído pero ya resuelto), así que no pueden compartir color
+                ni posición: este va en la fila, el punto sigue en la
+                esquina del avatar. */}
+            {lead.unread_message_count > 0 && (
+              <span
+                className="flex h-5 min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1 text-[10px] font-semibold leading-none text-white dark:bg-emerald-500"
+                title={`${lead.unread_message_count} mensaje${lead.unread_message_count === 1 ? "" : "s"} sin leer`}
+              >
+                {lead.unread_message_count > 99 ? "99+" : lead.unread_message_count}
+              </span>
+            )}
+          </div>
         </div>
 
         {lostReason ? (

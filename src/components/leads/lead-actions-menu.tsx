@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, MoreVertical, RotateCcw, Trash2, XCircle } from "lucide-react"
+import { Archive, ArchiveRestore, CheckCircle2, MoreVertical, RotateCcw, Trash2, XCircle } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { DeleteLeadAlert } from "@/components/leads/delete-lead-alert"
 import { MarkLostDialog } from "@/components/leads/mark-lost-dialog"
-import { useArchiveLead, useReopenLead } from "@/hooks/use-lead-actions"
+import { useArchiveLead, useMarkLeadResolved, useReopenLead } from "@/hooks/use-lead-actions"
 import { useAuth } from "@/lib/auth-context"
 import type { LeadStage } from "@/lib/types"
 
@@ -38,6 +38,7 @@ export function LeadActionsMenu({ leadId, leadName, stage, isArchived, onDeleted
   const isAdmin = user?.crm_rol === "ADMIN_CRM"
   const archiveMutation = useArchiveLead(leadId)
   const reopenMutation = useReopenLead(leadId)
+  const markResolvedMutation = useMarkLeadResolved(leadId)
   const [markLostOpen, setMarkLostOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const isLost = stage === "CLOSED"
@@ -59,6 +60,15 @@ export function LeadActionsMenu({ leadId, leadName, stage, isArchived, onDeleted
           <DropdownMenuItem onSelect={() => archiveMutation.mutate(!isArchived)} disabled={archiveMutation.isPending}>
             {isArchived ? <ArchiveRestore /> : <Archive />}
             {isArchived ? "Desarchivar" : "Archivar"}
+          </DropdownMenuItem>
+          {/* Fase 3.1, diseño aprobado: caso de uso del "gracias" -- se ve
+              en la lista, no hace falta abrir el hilo para despachar el
+              punto azul de "esperando respuesta". Sin guard (mismo
+              criterio que mark-read): si ya estaba resuelta, es un no-op
+              funcional. */}
+          <DropdownMenuItem onSelect={() => markResolvedMutation.mutate()} disabled={markResolvedMutation.isPending}>
+            <CheckCircle2 />
+            Marcar como resuelta
           </DropdownMenuItem>
           {isLost ? (
             <DropdownMenuItem onSelect={() => reopenMutation.mutate()} disabled={reopenMutation.isPending}>

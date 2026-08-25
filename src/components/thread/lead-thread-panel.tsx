@@ -93,6 +93,10 @@ function buildThreadItems(messagesAsc: ThreadMessage[]): ThreadItem[] {
 // deberían tratarse como "está leyendo mensajes viejos".
 const NEAR_BOTTOM_PX = 80
 
+function isNearBottom(el: HTMLDivElement | null): boolean {
+  return !el || el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX
+}
+
 export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: () => void }) {
   const thread = useLeadThread(leadId)
   const { data: lead } = useLead(leadId)
@@ -107,6 +111,11 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
   // messagesAsc.length) lo consume una vez que el DOM ya creció.
   const scrollToBottomPendingRef = useRef(false)
   const [newMessagesBelow, setNewMessagesBelow] = useState(0)
+  // Fase 3.1, diseño aprobado: mismo pill que "N mensajes nuevos", pero
+  // visible cualquier vez que el usuario esté scrolleado hacia arriba,
+  // no solo cuando llegan mensajes -- volver al final de un hilo largo
+  // sin tener que arrastrar el scroll a mano.
+  const [atBottom, setAtBottom] = useState(true)
 
   // Fase 2.11, Paso 0 aprobado: inmediato al abrir el hilo, sin retardo
   // — este componente ya se remonta por lead (key={selectedLeadId} en
@@ -141,14 +150,16 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
   // lo sigue mostrando; si estaba leyendo más arriba, no le mueve el
   // scroll y en cambio suma al indicador "N mensajes nuevos".
   usePollNewMessages(leadId, latestMessageId, (incoming) => {
-    const el = containerRef.current
-    const atBottom = !el || el.scrollHeight - el.scrollTop - el.clientHeight <= NEAR_BOTTOM_PX
-    if (atBottom) {
+    if (isNearBottom(containerRef.current)) {
       scrollToBottomPendingRef.current = true
     } else {
       setNewMessagesBelow((n) => n + incoming.length)
     }
   })
+
+  const handleScroll = () => {
+    setAtBottom(isNearBottom(containerRef.current))
+  }
 
   const items = useMemo(() => buildThreadItems(messagesAsc), [messagesAsc])
 
@@ -203,11 +214,12 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
     thread.fetchNextPage()
   }
 
-  const handleJumpToNewMessages = () => {
+  const handleScrollToBottom = () => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight
     }
     setNewMessagesBelow(0)
+    setAtBottom(true)
   }
 
   return (
@@ -215,7 +227,7 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
       <ThreadHeader leadId={leadId} onBack={onBack} />
 
       <div className="relative min-h-0 flex-1">
-        <div ref={containerRef} className="h-full overflow-y-auto px-3 py-3">
+        <div ref={containerRef} onScroll={handleScroll} className="h-full overflow-y-auto px-3 py-3">
           {thread.isLoading ? (
             <ThreadSkeleton />
           ) : thread.isError ? (
@@ -257,16 +269,24 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
         {/* Fase 2.11.1, Paso 0 aprobado: mismo criterio que WhatsApp — si
             el usuario está leyendo mensajes viejos, un mensaje nuevo no
             le mueve el scroll solo; este botón flotante es la forma de
-            bajar a propósito. */}
-        {newMessagesBelow > 0 && (
+            bajar a propósito.
+            Fase 3.1, diseño aprobado: mismo pill, ahora también visible
+            con !atBottom sin mensajes nuevos (volver al final de un hilo
+            largo) — el texto solo aparece cuando hay conteo real, un
+            simple ícono de flecha alcanza para "volver abajo" a secas. */}
+        {(newMessagesBelow > 0 || !atBottom) && (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
             <Button
               size="sm"
               className="pointer-events-auto gap-1.5 rounded-full shadow-md"
-              onClick={handleJumpToNewMessages}
+              onClick={handleScrollToBottom}
             >
               <ArrowDown className="h-3.5 w-3.5" />
-              {newMessagesBelow === 1 ? "1 mensaje nuevo" : `${newMessagesBelow} mensajes nuevos`}
+              {newMessagesBelow === 1
+                ? "1 mensaje nuevo"
+                : newMessagesBelow > 1
+                  ? `${newMessagesBelow} mensajes nuevos`
+                  : null}
             </Button>
           </div>
         )}

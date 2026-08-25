@@ -99,3 +99,11 @@ export function markLeadRead(leadId: number): Promise<{ ok: boolean; last_read_a
 export function reactivateBot(leadId: number): Promise<{ ok: boolean; bot_paused: boolean }> {
   return apiFetch(`/api/sales/leads/${leadId}/reactivate-bot/`, { method: "POST" })
 }
+
+// Fase 3.1, diseño aprobado: opuesto del punto azul de "esperando
+// respuesta" — compartido por lead (mismo criterio que mark-read). Se
+// limpia solo en el backend cuando llega un mensaje entrante nuevo, no
+// hay "desmarcar" manual.
+export function markLeadResolved(leadId: number): Promise<{ ok: boolean; resuelto_at: string }> {
+  return apiFetch(`/api/sales/leads/${leadId}/mark-resolved/`, { method: "POST" })
+}

@@ -7,10 +7,12 @@ import { LeadListEmpty, LeadListError } from "@/components/leads/lead-list-state
 import { LeadRow } from "@/components/leads/lead-row"
 import { LeadsSegmentTabs, type LeadsSegment } from "@/components/leads/leads-segment-tabs"
 import { LeadsTabs, type LeadsTabKey } from "@/components/leads/leads-tabs"
+import { ResizeHandle } from "@/components/layout/resize-handle"
 import { LeadThreadPanel } from "@/components/thread/lead-thread-panel"
 import { Input } from "@/components/ui/input"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useAllScopeLeads, useArchivedScopeLeads, useDefaultScopeLeads } from "@/hooks/use-leads"
+import { useResizableWidth } from "@/hooks/use-resizable-width"
 import { useAuth } from "@/lib/auth-context"
 import { displayNameFor } from "@/lib/lead-format"
 import type { Lead } from "@/lib/types"
@@ -155,6 +157,13 @@ export function BandejaPage() {
 
   const hasSelection = selectedLeadId !== null
 
+  // Fase 3.1, diseño aprobado: anchos ajustables en escritorio, persistidos
+  // por separado (lista↔hilo y hilo↔ficha son bordes independientes).
+  // Mínimos/máximos razonables para no poder romper el layout -- no
+  // aplica en mobile, donde la navegación sigue siendo por pilas.
+  const listWidth = useResizableWidth("crm_bandeja_list_width", 340, 260, 520)
+  const fichaWidth = useResizableWidth("crm_bandeja_ficha_width", 340, 260, 520)
+
   return (
     <div className="flex h-full min-h-0 w-full">
       {/* Escritorio: lista + hilo lado a lado, siempre las dos. Celular:
@@ -162,8 +171,9 @@ export function BandejaPage() {
           la lista a pantalla completa (se oculta con "hidden", no se
           desmonta la lista para no perder su scroll/estado al volver). */}
       <div
+        style={{ "--list-width": `${listWidth.width}px` } as React.CSSProperties}
         className={cn(
-          "flex h-full min-h-0 w-full flex-col md:w-[340px] md:shrink-0 md:border-r md:border-border md:flex",
+          "flex h-full min-h-0 w-full flex-col md:w-[var(--list-width)] md:shrink-0 md:flex",
           hasSelection && "hidden"
         )}
       >
@@ -208,6 +218,8 @@ export function BandejaPage() {
         </div>
       </div>
 
+      <ResizeHandle onMouseDown={listWidth.startResize(1)} />
+
       {/* min-w-0: sin esto, un mensaje con una cadena larga sin espacios
           (ej. un link) infla el min-width automático de este flex item más
           allá del ancho real disponible, y en mobile empuja los globos OUT
@@ -226,13 +238,19 @@ export function BandejaPage() {
       </div>
 
       {selectedLeadId !== null && fichaOpen && (
-        <div className="h-full min-h-0 w-full md:w-[340px] md:shrink-0 md:border-l md:border-border">
-          <LeadFichaPanel
-            key={selectedLeadId}
-            leadId={selectedLeadId}
-            onClose={() => navigate(`/bandeja/${selectedLeadId}${location.search}`)}
-          />
-        </div>
+        <>
+          <ResizeHandle onMouseDown={fichaWidth.startResize(-1)} />
+          <div
+            style={{ "--ficha-width": `${fichaWidth.width}px` } as React.CSSProperties}
+            className="h-full min-h-0 w-full md:w-[var(--ficha-width)] md:shrink-0"
+          >
+            <LeadFichaPanel
+              key={selectedLeadId}
+              leadId={selectedLeadId}
+              onClose={() => navigate(`/bandeja/${selectedLeadId}${location.search}`)}
+            />
+          </div>
+        </>
       )}
     </div>
   )

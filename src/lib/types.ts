@@ -83,6 +83,15 @@ export interface Lead {
   // hace falta rederivarlo acá.
   last_read_at: string | null
   unread: boolean
+  // Fase 3.1: conteo real de mensajes IN posteriores a last_read_at
+  // (mismo criterio que `unread`, anotado en el backend) -- para el
+  // badge numerado, no solo el booleano.
+  unread_message_count: number
+  // Fase 3.1, diseño aprobado: opuesto de "esperando respuesta" (ver
+  // last_message_direction). Compartido por lead, timestamp nullable
+  // (no booleano) -- se limpia solo con un mensaje IN nuevo, en el
+  // backend (_log_message), nunca en el cliente.
+  resuelto_at: string | null
   opted_out_at: string | null
   created_at: string
   updated_at: string
