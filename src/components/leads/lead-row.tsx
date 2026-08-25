@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { LeadActionsMenu } from "@/components/leads/lead-actions-menu"
 import {
   ageColorClass,
+  attachmentPreviewLabel,
   displayNameFor,
   etiquetaLabel,
   formatRelativeTime,
@@ -136,6 +137,14 @@ export function LeadRow({
         ) : lead.last_inbound_text ? (
           <p className={cn("truncate text-sm", lead.unread ? "font-semibold text-foreground" : "text-muted-foreground")}>
             {lead.last_inbound_text}
+          </p>
+        ) : lead.last_inbound_at ? (
+          // Fase 3.4 (hallazgo en producción): last_inbound_text vacío
+          // con last_inbound_at seteado significa que SÍ respondió, pero
+          // con un adjunto sin caption -- no es lo mismo que "nunca
+          // escribió", así que no puede compartir el texto de abajo.
+          <p className={cn("truncate text-sm", lead.unread ? "font-semibold text-foreground" : "text-muted-foreground")}>
+            {attachmentPreviewLabel(lead.last_inbound_attachment_type)}
           </p>
         ) : (
           <p className="truncate text-sm italic text-muted-foreground/60">Sin respuesta del lead</p>

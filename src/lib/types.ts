@@ -104,6 +104,12 @@ export interface Lead {
   // distinto de last_message_text (que casi siempre es la respuesta del
   // bot). null si el lead nunca escribió.
   last_inbound_text: string | null
+  // Fase 3.4 (hallazgo en producción): content_type del adjunto del
+  // último mensaje IN -- solo viene con valor cuando ese mensaje no
+  // tenía texto (ej. una foto sin caption). Usarlo SOLO cuando
+  // last_inbound_text está vacío pero last_inbound_at no es null --
+  // si no, es "nunca escribió" de verdad.
+  last_inbound_attachment_type: string | null
   last_message_direction: "IN" | "OUT" | null
   last_message_at: string | null
   current_conversation_id: number | null

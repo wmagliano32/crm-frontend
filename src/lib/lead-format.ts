@@ -26,6 +26,19 @@ export function ageColorClass(iso: string | null): string {
   return "text-rose-600 dark:text-rose-500 font-semibold"
 }
 
+// Fase 3.4 (hallazgo en producción): Message.text es "" (no null) cuando
+// el mensaje entrante es un adjunto sin caption -- sin esto, la fila
+// mostraba "Sin respuesta del lead" como si el contacto nunca hubiera
+// escrito, aunque mandó un archivo. Mismo criterio visual que WhatsApp
+// (ícono + tipo, no el nombre de archivo).
+export function attachmentPreviewLabel(contentType: string | null): string {
+  if (!contentType) return "Envió un archivo"
+  if (contentType.startsWith("image/")) return "📷 Foto"
+  if (contentType.startsWith("audio/")) return "🎤 Audio"
+  if (contentType.startsWith("video/")) return "🎥 Video"
+  return "📄 Documento"
+}
+
 export function initialsFor(name: string): string {
   const trimmed = name.trim()
   if (!trimmed) return "?"
