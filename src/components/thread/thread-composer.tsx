@@ -32,7 +32,7 @@ export function ThreadComposer({ lead, now, onSend, onSendAttachment, onSendTemp
     return <OpenComposer text={text} setText={setText} onSend={onSend} onSendAttachment={onSendAttachment} canAttach={canAttach} />
   }
   if (lead.stage === "HANDOFF") {
-    return <TemplateComposer windowLabel={windowStatus.label} onSendTemplate={onSendTemplate} />
+    return <TemplateComposer lead={lead} windowLabel={windowStatus.label} onSendTemplate={onSendTemplate} />
   }
   return <HandoffPrompt leadId={lead.id} windowLabel={windowStatus.label} />
 }
@@ -192,13 +192,15 @@ function HandoffPrompt({ leadId, windowLabel }: { leadId: number; windowLabel: s
 }
 
 function TemplateComposer({
+  lead,
   windowLabel,
   onSendTemplate,
 }: {
+  lead: Lead
   windowLabel: string
   onSendTemplate: ThreadComposerProps["onSendTemplate"]
 }) {
-  const { data: templates, isLoading, isError } = useTemplates()
+  const { data: templates, isLoading, isError } = useTemplates(lead.id)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const selected = templates?.find((t) => t.key === selectedKey) ?? null
 

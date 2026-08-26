@@ -1,8 +1,8 @@
 import { apiFetch, apiFetchMultipart } from "@/lib/api-client"
 import type { Conversation, SalesTemplate, SendMessageResponse } from "@/lib/types"
 
-export function fetchTemplates(): Promise<SalesTemplate[]> {
-  return apiFetch<SalesTemplate[]>("/api/sales/conversations/templates/")
+export function fetchTemplates(leadId: number): Promise<SalesTemplate[]> {
+  return apiFetch<SalesTemplate[]>(`/api/sales/conversations/templates/?lead=${leadId}`)
 }
 
 // Los tres siguientes son SIEMPRE por LEAD, nunca por conversación (Fase
