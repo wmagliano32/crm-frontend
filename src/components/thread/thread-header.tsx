@@ -90,6 +90,9 @@ export function ThreadHeader({ leadId, onBack }: { leadId: number; onBack: () =>
             leadName={name}
             stage={lead.stage}
             isArchived={lead.is_archived}
+            esCliente={lead.es_cliente}
+            usuarioConvertidoNombre={lead.usuario_convertido_nombre}
+            usuarioConvertidoOrganizacion={lead.usuario_convertido_organizacion}
             onDeleted={onBack}
           />
         )}

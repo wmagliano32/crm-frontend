@@ -190,7 +190,15 @@ export function LeadRow({
             <UserRoundX className="h-3.5 w-3.5" />
           </div>
         )}
-        <LeadActionsMenu leadId={lead.id} leadName={name} stage={lead.stage} isArchived={isArchived} />
+        <LeadActionsMenu
+          leadId={lead.id}
+          leadName={name}
+          stage={lead.stage}
+          isArchived={isArchived}
+          esCliente={lead.es_cliente}
+          usuarioConvertidoNombre={lead.usuario_convertido_nombre}
+          usuarioConvertidoOrganizacion={lead.usuario_convertido_organizacion}
+        />
       </div>
     </div>
   )

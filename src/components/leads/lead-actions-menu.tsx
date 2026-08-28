@@ -1,4 +1,4 @@
-import { Archive, ArchiveRestore, CheckCircle2, MoreVertical, RotateCcw, Trash2, XCircle } from "lucide-react"
+import { Archive, ArchiveRestore, CheckCircle2, MoreVertical, RotateCcw, Trash2, UserCheck, UserMinus, XCircle } from "lucide-react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -8,8 +8,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ConvertToClientDialog } from "@/components/leads/convert-to-client-dialog"
 import { DeleteLeadAlert } from "@/components/leads/delete-lead-alert"
 import { MarkLostDialog } from "@/components/leads/mark-lost-dialog"
+import { RevertToProspectDialog } from "@/components/leads/revert-to-prospect-dialog"
 import { useArchiveLead, useMarkLeadResolved, useReopenLead } from "@/hooks/use-lead-actions"
 import { useAuth } from "@/lib/auth-context"
 import type { LeadStage } from "@/lib/types"
@@ -23,6 +25,13 @@ interface LeadActionsMenuProps {
   // del hilo: sí viene del lead) — lo recibe como prop, calculado por
   // quien lo renderiza, en vez de asumir de dónde sale.
   isArchived: boolean
+  // Fase 3.6: decide si se ofrece "Convertir en cliente" o "Revertir a
+  // prospecto". Mismo criterio que isArchived — lo recibe como prop, ya
+  // resuelto por quien renderiza, en vez de asumir de dónde sale.
+  esCliente: boolean
+  // Para que el diálogo de reversión diga de quién se desvincula.
+  usuarioConvertidoNombre?: string | null
+  usuarioConvertidoOrganizacion?: string | null
   // Fase 2.8: eliminar saca al lead de todos lados — si el menú vive en
   // la cabecera del hilo abierto, hay que salir de ahí después.
   onDeleted?: () => void
@@ -33,7 +42,16 @@ interface LeadActionsMenuProps {
 // normales; Eliminar va separada con un divisor y estilo destructivo, y
 // solo aparece para ADMIN_CRM — un COMERCIAL ni la ve (el backend igual
 // la rechaza con 403 si se la fuerza por API).
-export function LeadActionsMenu({ leadId, leadName, stage, isArchived, onDeleted }: LeadActionsMenuProps) {
+export function LeadActionsMenu({
+  leadId,
+  leadName,
+  stage,
+  isArchived,
+  esCliente,
+  usuarioConvertidoNombre = null,
+  usuarioConvertidoOrganizacion = null,
+  onDeleted,
+}: LeadActionsMenuProps) {
   const { user } = useAuth()
   const isAdmin = user?.crm_rol === "ADMIN_CRM"
   const archiveMutation = useArchiveLead(leadId)
@@ -41,6 +59,8 @@ export function LeadActionsMenu({ leadId, leadName, stage, isArchived, onDeleted
   const markResolvedMutation = useMarkLeadResolved(leadId)
   const [markLostOpen, setMarkLostOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [convertOpen, setConvertOpen] = useState(false)
+  const [revertOpen, setRevertOpen] = useState(false)
   const isLost = stage === "CLOSED"
 
   return (
@@ -81,6 +101,20 @@ export function LeadActionsMenu({ leadId, leadName, stage, isArchived, onDeleted
               Marcar como perdido
             </DropdownMenuItem>
           )}
+          {/* Fase 3.6: convertir/revertir son excluyentes — se ofrece una
+              sola según es_cliente. Ambas abren diálogo: la conversión para
+              elegir usuario, la reversión porque el bot vuelve a hablarle. */}
+          {esCliente ? (
+            <DropdownMenuItem onSelect={() => setRevertOpen(true)}>
+              <UserMinus />
+              Revertir a prospecto
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem onSelect={() => setConvertOpen(true)}>
+              <UserCheck />
+              Convertir en cliente
+            </DropdownMenuItem>
+          )}
           {isAdmin && (
             <>
               <DropdownMenuSeparator />
@@ -93,6 +127,20 @@ export function LeadActionsMenu({ leadId, leadName, stage, isArchived, onDeleted
         </DropdownMenuContent>
       </DropdownMenu>
       <MarkLostDialog leadId={leadId} open={markLostOpen} onOpenChange={setMarkLostOpen} />
+      <ConvertToClientDialog
+        leadId={leadId}
+        leadName={leadName}
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+      />
+      <RevertToProspectDialog
+        leadId={leadId}
+        leadName={leadName}
+        usuarioNombre={usuarioConvertidoNombre}
+        usuarioOrganizacion={usuarioConvertidoOrganizacion}
+        open={revertOpen}
+        onOpenChange={setRevertOpen}
+      />
       <DeleteLeadAlert
         leadId={leadId}
         leadName={leadName}

@@ -3,6 +3,7 @@ import { assignLead, unassignLead } from "@/lib/conversations-api"
 import {
   addLeadEtiqueta,
   archiveLead,
+  convertLeadToClient,
   deleteLead,
   handoffLead,
   markLeadLost,
@@ -11,6 +12,7 @@ import {
   reactivateBot,
   removeLeadEtiqueta,
   reopenLead,
+  revertLeadToProspect,
   setLeadStage,
   unarchiveLead,
   updateLead,
@@ -168,6 +170,25 @@ export function useMarkLeadResolved(leadId: number) {
   const invalidate = useInvalidateLead(leadId)
   return useMutation({
     mutationFn: () => markLeadResolved(leadId),
+    onSuccess: invalidate,
+  })
+}
+
+// Fase 3.6: convertir/revertir cambian es_cliente, que además decide en qué
+// segmento de la bandeja aparece el lead (el filtro es 100% frontend, ver
+// bandeja-page) — por eso invalidan la lista además del lead.
+export function useConvertLeadToClient(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: (usuarioId: number | null) => convertLeadToClient(leadId, usuarioId),
+    onSuccess: invalidate,
+  })
+}
+
+export function useRevertLeadToProspect(leadId: number) {
+  const invalidate = useInvalidateLead(leadId)
+  return useMutation({
+    mutationFn: () => revertLeadToProspect(leadId),
     onSuccess: invalidate,
   })
 }

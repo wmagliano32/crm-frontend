@@ -129,6 +129,10 @@ export interface Lead {
   // La ficha de cliente completa (consorcios, UF, última liquidación) es
   // una fase aparte — esto es solo lo mínimo para no ocultar el estado.
   usuario_convertido_id: number | null
+  // Fase 3.6: el backend los resuelve por FK (select_related) — el id pelado
+  // no alcanza para decir de quién se desvincula al revertir.
+  usuario_convertido_nombre: string | null
+  usuario_convertido_organizacion: string | null
   fecha_conversion: string | null
 }
 
@@ -335,4 +339,19 @@ export interface CreateMeetingResponse {
   ok: boolean
   meeting: Meeting
   wa: WaSendResult | null
+}
+
+// Fase 3.6: usuario elegible para vincular a un lead convertido en cliente.
+// organizacion es el username del principal cuando es_asociado — el dato que
+// confirma que se vinculó bien ("Cintia Ojeda — asociada de dacarbone").
+// leads_vinculados NO oculta al usuario: una persona puede escribir desde dos
+// números y los dos leads pueden apuntar al mismo User.
+export interface ClienteSugerido {
+  id: number
+  nombre: string
+  username: string
+  email: string
+  es_asociado: boolean
+  organizacion: string | null
+  leads_vinculados: number[]
 }

@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api-client"
-import type { EtiquetaSeguimiento, Lead, LeadInternalNote, LeadStage, LeadUpdatePayload, MotivoPerdida, PaginatedResponse } from "@/lib/types"
+import type { ClienteSugerido, EtiquetaSeguimiento, Lead, LeadInternalNote, LeadStage, LeadUpdatePayload, MotivoPerdida, PaginatedResponse } from "@/lib/types"
 
 export type LeadsScope = "all" | "archived" | "handoff"
 
@@ -126,4 +126,27 @@ export function updateLeadNote(leadId: number, noteId: number, text: string): Pr
 
 export function deleteLeadNote(leadId: number, noteId: number): Promise<void> {
   return apiFetch(`/api/sales/leads/${leadId}/notes/${noteId}/`, { method: "DELETE" })
+}
+
+// Fase 3.6: buscador de usuarios elegibles para vincular. Endpoint propio del
+// CRM porque UserViewSet es tenant-scoped y un comercial no vería a ningún
+// cliente. El backend ignora términos de menos de 2 caracteres.
+export function searchClientes(q: string): Promise<{ results: ClienteSugerido[] }> {
+  return apiFetch(`/api/sales/leads/clientes-search/?q=${encodeURIComponent(q)}`)
+}
+
+// usuarioId null → se marca como cliente SIN vincular. Es el caso real: a
+// veces se sabe que es cliente pero no de quién, y marcarlo calla al bot de
+// inmediato. El vínculo se completa después llamando de nuevo.
+export function convertLeadToClient(leadId: number, usuarioId: number | null): Promise<Lead> {
+  return apiFetch(`/api/sales/leads/${leadId}/convert-to-client/`, {
+    method: "POST",
+    body: usuarioId === null ? {} : { usuario_id: usuarioId },
+  })
+}
+
+// Limpia los tres campos. El bot vuelve a tratarlo como prospecto — por eso
+// la UI lo confirma antes.
+export function revertLeadToProspect(leadId: number): Promise<Lead> {
+  return apiFetch(`/api/sales/leads/${leadId}/revert-to-prospect/`, { method: "POST" })
 }
