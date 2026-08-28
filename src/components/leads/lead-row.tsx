@@ -81,12 +81,27 @@ export function LeadRow({
             avatar, no una pill de texto — para que un cliente se distinga
             de un vistazo si alguna vez se mezclan con prospectos, sin
             competir con las etiquetas de seguimiento. */}
+        {/* Fase 3.6: el mismo ícono atenuado cuando es cliente pero SIN
+            usuario vinculado. Convertir sin vincular es un caso legítimo
+            (calla al bot ya, el vínculo se completa después) — si el badge
+            se viera igual, nadie sabría cuáles quedan por completar. */}
         {lead.es_cliente && (
           <span
             className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-background"
-            title="Cliente"
+            title={
+              lead.usuario_convertido_id
+                ? `Cliente — ${lead.usuario_convertido_nombre ?? "vinculado"}`
+                : "Cliente — falta vincular el usuario"
+            }
           >
-            <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500" aria-hidden />
+            <BadgeCheck
+              className={
+                lead.usuario_convertido_id
+                  ? "h-3.5 w-3.5 text-emerald-600 dark:text-emerald-500"
+                  : "h-3.5 w-3.5 text-emerald-600/40 dark:text-emerald-500/40"
+              }
+              aria-hidden
+            />
           </span>
         )}
       </div>

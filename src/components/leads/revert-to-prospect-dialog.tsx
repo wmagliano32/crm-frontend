@@ -1,3 +1,4 @@
+import { useSearchParams } from "react-router-dom"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -33,6 +34,9 @@ export function RevertToProspectDialog({
   onOpenChange,
 }: RevertToProspectDialogProps) {
   const mutation = useRevertLeadToProspect(leadId)
+  // Inverso de la conversión: el lead vuelve a Prospectos y el segmento lo
+  // sigue (ver ConvertToClientDialog).
+  const [searchParams, setSearchParams] = useSearchParams()
 
   function handleOpenChange(next: boolean) {
     if (!next) mutation.reset()
@@ -40,7 +44,14 @@ export function RevertToProspectDialog({
   }
 
   function handleConfirm() {
-    mutation.mutate(undefined, { onSuccess: () => handleOpenChange(false) })
+    mutation.mutate(undefined, {
+      onSuccess: () => {
+        const params = new URLSearchParams(searchParams)
+        params.delete("segmento")
+        setSearchParams(params, { replace: true })
+        handleOpenChange(false)
+      },
+    })
   }
 
   return (

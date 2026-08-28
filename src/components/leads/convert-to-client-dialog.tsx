@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -19,6 +20,11 @@ interface ConvertToClientDialogProps {
   leadName: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  // Fase 3.6: el mismo diálogo sirve para CONVERTIR (desde el menú) y para
+  // COMPLETAR el vínculo de un lead que ya es cliente (desde la ficha). El
+  // endpoint es el mismo e idempotente sobre es_cliente; sólo cambia el copy,
+  // porque "deja de ser un prospecto" ya no aplica cuando ya lo era.
+  yaEsCliente?: boolean
 }
 
 // Fase 3.6: el matching automático por teléfono (2.13) solo reconoce a quien
@@ -33,13 +39,24 @@ interface ConvertToClientDialogProps {
 // Mismo AlertDialog que MarkLostDialog (las únicas primitivas aprobadas son
 // DropdownMenu y AlertDialog) y mismo criterio con el botón de confirmar: un
 // <Button> normal, para no cerrar el modal si el POST falla.
-export function ConvertToClientDialog({ leadId, leadName, open, onOpenChange }: ConvertToClientDialogProps) {
+export function ConvertToClientDialog({
+  leadId,
+  leadName,
+  open,
+  onOpenChange,
+  yaEsCliente = false,
+}: ConvertToClientDialogProps) {
   const [termino, setTermino] = useState("")
   const [sugerencias, setSugerencias] = useState<ClienteSugerido[]>([])
   const [buscando, setBuscando] = useState(false)
   const [errorBusqueda, setErrorBusqueda] = useState(false)
   const [elegido, setElegido] = useState<ClienteSugerido | null>(null)
   const mutation = useConvertLeadToClient(leadId)
+  // El segmento de la bandeja vive en la URL (?segmento=clientes) y se filtra
+  // 100% en el frontend por es_cliente: al convertir, el lead desaparece de
+  // Prospectos. La navegación lo sigue en vez de dejarlo desaparecer sin
+  // explicación — el hilo abierto (ruta /bandeja/:leadId) no se toca.
+  const [searchParams, setSearchParams] = useSearchParams()
 
   // Debounce simple: el buscador dispara por tipeo y el backend ignora
   // términos de menos de 2 caracteres.
@@ -87,23 +104,41 @@ export function ConvertToClientDialog({ leadId, leadName, open, onOpenChange }: 
   const sugerenciasVisibles = terminoValido ? sugerencias : []
 
   function handleConfirm() {
-    mutation.mutate(elegido?.id ?? null, { onSuccess: () => handleOpenChange(false) })
+    mutation.mutate(elegido?.id ?? null, {
+      onSuccess: () => {
+        const params = new URLSearchParams(searchParams)
+        params.set("segmento", "clientes")
+        setSearchParams(params, { replace: true })
+        handleOpenChange(false)
+      },
+    })
   }
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent onClick={(e) => e.stopPropagation()}>
         <AlertDialogHeader>
-          <AlertDialogTitle>Convertir en cliente</AlertDialogTitle>
+          <AlertDialogTitle>
+            {yaEsCliente ? "Vincular usuario" : "Convertir en cliente"}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            {leadName} deja de ser un prospecto. <strong>El bot deja de tratarlo como tal</strong> y
-            no vuelve a ofrecerle demos ni seguimiento comercial.
+            {yaEsCliente ? (
+              <>Elegí a qué usuario corresponde {leadName}. Ya está marcado como cliente.</>
+            ) : (
+              <>
+                {leadName} deja de ser un prospecto.{" "}
+                <strong>El bot deja de tratarlo como tal</strong> y no vuelve a ofrecerle demos ni
+                seguimiento comercial.
+              </>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="buscar-cliente">Vincular a un usuario (opcional)</Label>
+            <Label htmlFor="buscar-cliente">
+              {yaEsCliente ? "Usuario" : "Vincular a un usuario (opcional)"}
+            </Label>
             <Input
               id="buscar-cliente"
               value={termino}
@@ -141,7 +176,9 @@ export function ConvertToClientDialog({ leadId, leadName, open, onOpenChange }: 
               )}
               {terminoValido && !buscando && !errorBusqueda && sugerenciasVisibles.length === 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Sin resultados entre los clientes. Podés convertirlo igual y vincularlo después.
+                  {yaEsCliente
+                    ? "Sin resultados entre los clientes."
+                    : "Sin resultados entre los clientes. Podés convertirlo igual y vincularlo después."}
                 </p>
               )}
               {sugerenciasVisibles.length > 0 && (
@@ -182,12 +219,19 @@ export function ConvertToClientDialog({ leadId, leadName, open, onOpenChange }: 
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} disabled={mutation.isPending}>
+          <Button
+            onClick={handleConfirm}
+            disabled={mutation.isPending || (yaEsCliente && !elegido)}
+          >
             {mutation.isPending
-              ? "Convirtiendo…"
-              : elegido
-                ? "Convertir y vincular"
-                : "Convertir sin vincular"}
+              ? yaEsCliente
+                ? "Vinculando…"
+                : "Convirtiendo…"
+              : yaEsCliente
+                ? "Vincular usuario"
+                : elegido
+                  ? "Convertir y vincular"
+                  : "Convertir sin vincular"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

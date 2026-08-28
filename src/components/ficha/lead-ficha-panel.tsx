@@ -1,8 +1,11 @@
 import { BadgeCheck, X } from "lucide-react"
+import { useState } from "react"
 import { InlineField } from "@/components/ficha/inline-field"
 import { CreateMeetingDialog } from "@/components/demos/create-meeting-dialog"
 import { MeetingRow } from "@/components/demos/meeting-row"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { ConvertToClientDialog } from "@/components/leads/convert-to-client-dialog"
 import { SelectNative } from "@/components/ui/select-native"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useSetLeadStage, useUpdateLead } from "@/hooks/use-lead-actions"
@@ -20,6 +23,10 @@ export function LeadFichaPanel({ leadId, onClose }: { leadId: number; onClose: (
   const stageMutation = useSetLeadStage(leadId)
   const updateMutation = useUpdateLead(leadId)
   const { data: meetings } = useMeetings(leadId)
+  // Fase 3.6: reusa el diálogo de conversión para COMPLETAR el vínculo de un
+  // lead que ya es cliente — el endpoint es el mismo y es idempotente sobre
+  // es_cliente, así que no hace falta uno aparte.
+  const [vincularOpen, setVincularOpen] = useState(false)
 
   function save<K extends keyof LeadUpdatePayload>(field: K, value: LeadUpdatePayload[K]) {
     updateMutation.mutate({ [field]: value } as LeadUpdatePayload)
@@ -49,12 +56,42 @@ export function LeadFichaPanel({ leadId, onClose }: { leadId: number; onClose: (
         ) : (
           <div className="flex flex-col gap-4 p-3">
             {lead.es_cliente && (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 px-2.5 py-2 text-sm text-emerald-700 dark:text-emerald-400">
-                <BadgeCheck className="h-4 w-4 shrink-0" />
-                <span>
-                  Es cliente
-                  {lead.fecha_conversion && ` desde el ${CONVERSION_DATE_FORMATTER.format(new Date(lead.fecha_conversion))}`}
-                </span>
+              <div className="flex flex-col gap-1.5 rounded-lg bg-emerald-500/10 px-2.5 py-2 text-sm text-emerald-700 dark:text-emerald-400">
+                <div className="flex items-center gap-2">
+                  <BadgeCheck className="h-4 w-4 shrink-0" />
+                  <span>
+                    Es cliente
+                    {lead.fecha_conversion && ` desde el ${CONVERSION_DATE_FORMATTER.format(new Date(lead.fecha_conversion))}`}
+                  </span>
+                </div>
+                {/* Fase 3.6: el vínculo con el User, ahora que el dato viaja
+                    en el payload. Sin vínculo, el botón lo completa acá mismo
+                    — es el pendiente que deja "convertir sin vincular". */}
+                {lead.usuario_convertido_nombre ? (
+                  <p className="pl-6 text-xs">
+                    Vinculado a <strong>{lead.usuario_convertido_nombre}</strong>
+                    {lead.usuario_convertido_organizacion && (
+                      <>
+                        {" — "}
+                        {lead.usuario_convertido_nombre === lead.usuario_convertido_organizacion
+                          ? lead.usuario_convertido_organizacion
+                          : `asociado de ${lead.usuario_convertido_organizacion}`}
+                      </>
+                    )}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2 pl-6">
+                    <span className="text-xs">Sin usuario vinculado.</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={() => setVincularOpen(true)}
+                    >
+                      Vincular usuario
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -135,6 +172,16 @@ export function LeadFichaPanel({ leadId, onClose }: { leadId: number; onClose: (
           </div>
         )}
       </div>
+
+      {lead && (
+        <ConvertToClientDialog
+          leadId={leadId}
+          leadName={lead.name || lead.phone_e164}
+          yaEsCliente
+          open={vincularOpen}
+          onOpenChange={setVincularOpen}
+        />
+      )}
     </div>
   )
 }
