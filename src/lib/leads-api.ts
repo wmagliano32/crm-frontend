@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api-client"
-import type { ClienteSugerido, EtiquetaSeguimiento, Lead, LeadInternalNote, LeadStage, LeadUpdatePayload, MotivoPerdida, PaginatedResponse } from "@/lib/types"
+import type { CheckPhoneResponse, ClienteSugerido, CreateLeadPayload, EtiquetaSeguimiento, Lead, LeadInternalNote, LeadStage, LeadUpdatePayload, MotivoPerdida, PaginatedResponse } from "@/lib/types"
 
 export type LeadsScope = "all" | "archived" | "handoff"
 
@@ -149,4 +149,24 @@ export function convertLeadToClient(leadId: number, usuarioId: number | null): P
 // la UI lo confirma antes.
 export function revertLeadToProspect(leadId: number): Promise<Lead> {
   return apiFetch(`/api/sales/leads/${leadId}/revert-to-prospect/`, { method: "POST" })
+}
+
+// Fase 3.7: alta manual. Devuelve el Lead con el shape COMPLETO de lectura
+// (LeadSerializer), no un eco del payload de escritura — por eso se puede
+// navegar directo al lead nuevo con lo que responde, incluido es_cliente,
+// que es lo que decide el segmento de destino.
+//
+// El 400 por teléfono duplicado trae "lead_existente" en el body del
+// ApiError (ver LeadExistente); quien llama tiene que mirarlo antes de
+// caer en el mensaje de error genérico.
+export function createLead(payload: CreateLeadPayload): Promise<Lead> {
+  return apiFetch<Lead>(`/api/sales/leads/`, { method: "POST", body: payload })
+}
+
+// Solo lectura, no crea ni valida duplicados — se usa al perder foco el
+// campo de teléfono del formulario de alta, para poder ofrecer el vínculo
+// con un cliente ANTES de crear. El teléfono va crudo: normalizarlo es
+// del backend.
+export function checkLeadPhone(rawPhone: string): Promise<CheckPhoneResponse> {
+  return apiFetch<CheckPhoneResponse>(`/api/sales/leads/check-phone/?phone=${encodeURIComponent(rawPhone)}`)
 }

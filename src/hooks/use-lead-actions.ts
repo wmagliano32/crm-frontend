@@ -4,6 +4,7 @@ import {
   addLeadEtiqueta,
   archiveLead,
   convertLeadToClient,
+  createLead,
   deleteLead,
   handoffLead,
   markLeadLost,
@@ -17,7 +18,7 @@ import {
   unarchiveLead,
   updateLead,
 } from "@/lib/leads-api"
-import type { EtiquetaSeguimiento, LeadStage, LeadUpdatePayload, MotivoPerdida } from "@/lib/types"
+import type { CreateLeadPayload, EtiquetaSeguimiento, LeadStage, LeadUpdatePayload, MotivoPerdida } from "@/lib/types"
 
 // Asignación/etiquetas/stage se ven tanto en la cabecera del hilo como en
 // la lista de la bandeja (avatar de asignado, pills de etiquetas) —
@@ -190,5 +191,22 @@ export function useRevertLeadToProspect(leadId: number) {
   return useMutation({
     mutationFn: () => revertLeadToProspect(leadId),
     onSuccess: invalidate,
+  })
+}
+
+// Fase 3.7: alta manual. No usa useInvalidateLead porque el lead todavía
+// no existe cuando se arma el hook — la respuesta ES la lectura completa
+// (LeadSerializer), así que se siembra la caché de ["lead", id] con ella y
+// la pantalla del hilo abre con los datos puestos, sin un GET de más.
+// ["leads"] se invalida entero: el lead nuevo puede caer en cualquiera de
+// los scopes/segmentos según es_cliente.
+export function useCreateLead() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateLeadPayload) => createLead(payload),
+    onSuccess: (lead) => {
+      queryClient.setQueryData(["lead", lead.id], lead)
+      queryClient.invalidateQueries({ queryKey: ["leads"] })
+    },
   })
 }

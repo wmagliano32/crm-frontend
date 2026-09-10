@@ -82,6 +82,10 @@ export function stageLabel(stage: LeadStage): string {
   return STAGE_LABEL[stage] ?? stage
 }
 
+// Vocabulario cerrado COMPLETO (sales_ai.models.EtiquetaSeguimiento). El
+// Record tipado es a propósito: sumar un valor al type sin darle label acá
+// no compila, así que una etiqueta nueva del backend nunca puede terminar
+// mostrándose en pantalla como "REVISAR_CLIENTE" en mayúsculas.
 const ETIQUETA_LABEL: Record<EtiquetaSeguimiento, string> = {
   RESPONDER_HOY: "Responder hoy",
   ESPERANDO_CLIENTE: "Esperando cliente",
@@ -89,11 +93,26 @@ const ETIQUETA_LABEL: Record<EtiquetaSeguimiento, string> = {
   DEMO_AGENDADA: "Demo agendada",
   TRABADO: "Trabado",
   SIN_DATOS: "Sin datos",
+  TELEFONO_COMPARTIDO: "Teléfono compartido",
+  REVISAR_CLIENTE: "¿Es cliente?",
 }
 
-// Vocabulario cerrado completo, en el orden en que se ofrecen para
-// agregar (sales_ai.models.EtiquetaSeguimiento en el backend).
-export const ALL_ETIQUETAS = Object.keys(ETIQUETA_LABEL) as EtiquetaSeguimiento[]
+// Las que se OFRECEN en el selector de "agregar etiqueta", en ese orden.
+// No es el vocabulario completo: TELEFONO_COMPARTIDO (Fase 2.13) y
+// REVISAR_CLIENTE (Fase 3.7) las pone el backend solo, y afirman algo
+// sobre el matching de teléfono contra clientes que un operador no puede
+// verificar a mano — dejar que las agregue sería dejarlo mentir sobre el
+// estado del sistema. Quitarlas sí se puede (es la acción real: "ya lo
+// revisé"), y eso funciona por otro camino: la cabecera del hilo dibuja
+// las etiquetas ACTIVAS del lead, no esta lista.
+export const ALL_ETIQUETAS: EtiquetaSeguimiento[] = [
+  "RESPONDER_HOY",
+  "ESPERANDO_CLIENTE",
+  "PIDIO_PRECIO",
+  "DEMO_AGENDADA",
+  "TRABADO",
+  "SIN_DATOS",
+]
 
 export function etiquetaLabel(etiqueta: string): string {
   return ETIQUETA_LABEL[etiqueta as EtiquetaSeguimiento] ?? etiqueta

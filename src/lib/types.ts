@@ -22,6 +22,10 @@ export interface CrmLoginResponse {
 }
 
 // Vocabulario cerrado de sales_ai.models.EtiquetaSeguimiento (backend).
+// Las dos últimas las pone el BACKEND solo, nunca un operador: marcan que
+// el teléfono del lead matcheó con algún cliente y hace falta revisarlo a
+// mano. Por eso no entran en ALL_ETIQUETAS (el selector de "agregar
+// etiqueta"), pero sí tienen que tener label — ver lib/lead-format.ts.
 export type EtiquetaSeguimiento =
   | "RESPONDER_HOY"
   | "ESPERANDO_CLIENTE"
@@ -29,6 +33,14 @@ export type EtiquetaSeguimiento =
   | "DEMO_AGENDADA"
   | "TRABADO"
   | "SIN_DATOS"
+  // Fase 2.13: el teléfono matcheó con MÁS DE UN cliente — se marcó
+  // es_cliente=True sin vincular, porque elegir uno sería adivinar.
+  | "TELEFONO_COMPARTIDO"
+  // Fase 3.7: alta manual con match de cliente ÚNICO que el operador no
+  // confirmó. Hay candidato, pero no se vincula sin confirmación
+  // explícita; la etiqueta evita que quede como prospecto silencioso y
+  // el bot le hable a alguien que el sistema ya sospecha que es cliente.
+  | "REVISAR_CLIENTE"
 
 export type LeadStage =
   | "NEW"
@@ -354,4 +366,59 @@ export interface ClienteSugerido {
   es_asociado: boolean
   organizacion: string | null
   leads_vinculados: number[]
+}
+
+// Fase 3.7: alta manual de un lead (POST /api/sales/leads/). "phone" va
+// CRUDO — el backend lo normaliza a E.164 (normalize_phone_to_e164) y
+// rechaza con 400 lo que no pueda interpretar; normalizarlo también acá
+// sería una segunda definición de lo mismo.
+//
+// Los opcionales se OMITEN cuando el campo quedó vacío, no se mandan como
+// "": consorcios_count/units_count son enteros nullable en el modelo y un
+// "" no pasa la validación de DRF.
+//
+// usuario_id solo viaja cuando el operador confirmó explícitamente el
+// vínculo (checkbox tildado). Sin él, el backend re-chequea el teléfono
+// por su cuenta y decide entre TELEFONO_COMPARTIDO, REVISAR_CLIENTE o
+// nada — ver LeadCreateSerializer.create.
+export interface CreateLeadPayload {
+  phone: string
+  name: string
+  email?: string
+  company?: string
+  city?: string
+  consorcios_count?: number
+  units_count?: number
+  current_system?: string
+  main_pain?: string
+  usuario_id?: number
+}
+
+// GET /api/sales/leads/check-phone/?phone=<crudo> — consulta de SOLO
+// LECTURA para el blur del campo teléfono. No valida duplicado de lead
+// (eso es exclusivo del POST) ni crea nada.
+//   null       → el teléfono no corresponde a ningún cliente conocido.
+//   "match"    → un único cliente candidato; se ofrece vincularlo.
+//   "colision" → varios candidatos; el backend lo va a marcar cliente sin
+//                vincular, no hay nada que elegir desde la UI.
+// organizacion puede venir null (un administrador sin organización a la
+// que colgarse), así que el copy no puede asumir que hay algo que mostrar.
+export type ClienteMatch =
+  | { tipo: "match"; usuario_id: number; nombre: string; organizacion: string | null }
+  | { tipo: "colision" }
+
+export interface CheckPhoneResponse {
+  phone_e164: string | null
+  cliente_match: ClienteMatch | null
+}
+
+// Cuerpo extra del 400 cuando el teléfono ya tiene un lead: el backend lo
+// manda TIPADO (es_cliente es un booleano de verdad, no el "False" string
+// que saldría si viajara adentro del detail del ValidationError de DRF) —
+// se puede usar directo para decidir a qué segmento navegar.
+export interface LeadExistente {
+  id: number
+  nombre: string
+  phone_e164: string
+  es_cliente: boolean
 }

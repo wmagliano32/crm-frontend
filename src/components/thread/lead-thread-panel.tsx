@@ -249,7 +249,12 @@ export function LeadThreadPanel({ leadId, onBack }: { leadId: number; onBack: ()
                 </div>
               )}
               {items.length === 0 && pending.length === 0 ? (
-                <ThreadEmpty />
+                // Fase 3.7: last_inbound_at es la MISMA fuente que usa el
+                // gate de la ventana de 24h del composer (window-format),
+                // así que el cartel de arriba y el de abajo no se pueden
+                // contradecir. Mientras el lead no cargó todavía, el texto
+                // genérico de siempre.
+                <ThreadEmpty neverWrote={lead ? !lead.last_inbound_at : false} />
               ) : (
                 <div className="flex min-w-0 flex-col gap-1">
                   {items.map((item) =>

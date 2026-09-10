@@ -1,7 +1,8 @@
-import { Search } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { LeadFichaPanel } from "@/components/ficha/lead-ficha-panel"
+import { CreateLeadDialog } from "@/components/leads/create-lead-dialog"
 import { LeadListSkeleton } from "@/components/leads/lead-list-skeleton"
 import { LeadListEmpty, LeadListError } from "@/components/leads/lead-list-states"
 import { LeadRow } from "@/components/leads/lead-row"
@@ -9,6 +10,7 @@ import { LeadsSegmentTabs, type LeadsSegment } from "@/components/leads/leads-se
 import { LeadsTabs, type LeadsTabKey } from "@/components/leads/leads-tabs"
 import { ResizeHandle } from "@/components/layout/resize-handle"
 import { LeadThreadPanel } from "@/components/thread/lead-thread-panel"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { useAllScopeLeads, useArchivedScopeLeads, useDefaultScopeLeads } from "@/hooks/use-leads"
@@ -77,6 +79,7 @@ export function BandejaPage() {
   }
 
   const [tab, setTab] = useState<LeadsTabKey>("pendientes")
+  const [nuevoLeadOpen, setNuevoLeadOpen] = useState(false)
   const [query, setQuery] = useState("")
   const debouncedQuery = useDebouncedValue(query, 300)
 
@@ -166,6 +169,16 @@ export function BandejaPage() {
           <LeadsSegmentTabs value={segment} onChange={handleSegmentChange} counts={segmentCounts} />
         </div>
 
+        {/* Fase 3.7: fila propia y ancho completo, no apretado al lado del
+            buscador — la lista arranca en 340px y baja hasta 260px, ahí un
+            botón al lado del input le come el placeholder. */}
+        <div className="shrink-0 px-3 pt-3">
+          <Button variant="outline" size="sm" className="w-full" onClick={() => setNuevoLeadOpen(true)}>
+            <Plus className="h-3.5 w-3.5" />
+            Nuevo lead
+          </Button>
+        </div>
+
         <div className="shrink-0 border-b border-border p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -237,6 +250,8 @@ export function BandejaPage() {
           </div>
         </>
       )}
+
+      <CreateLeadDialog open={nuevoLeadOpen} onOpenChange={setNuevoLeadOpen} />
     </div>
   )
 }
